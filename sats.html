@@ -1,126 +1,64 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="UTF-8">
-<title>Zegar Satoshi</title>
-<style>
-    body { 
-        font-family: Segoe UI, sans-serif; 
-        max-width: 600px; 
-        margin: 40px auto; 
-        padding: 0 20px;
-        color: #222;
-    }
-    input { 
-        width: 100%; 
-        padding: 10px; 
-        margin: 6px 0 14px 0; 
-        font-size: 16px; 
-        border: 1px solid #ccc; 
-        border-radius: 6px;
-    }
-    .box { 
-        padding: 15px; 
-        border: 1px solid #ccc; 
-        border-radius: 8px; 
-        margin-top: 20px; 
-        background: #fafafa;
-    }
-    .value { 
-        font-size: 28px; 
-        font-weight: bold; 
-        margin-top: 10px; 
-    }
-</style>
+    <meta charset="UTF-8">
+    <title>Sats Accumulator</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; background: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        .stat { font-size: 1.2em; font-weight: bold; color: #f7931a; }
+    </style>
 </head>
 <body>
 
-<h2>Zegar liczący kupowane satoshi</h2>
+<div class="card">
+    <h2>Sats Accumulator</h2>
+    <p>Kurs BTC: <span id="price">Ładowanie...</span> USD</p>
+    
+    <label>Twoje obecne saldo (w Sats):</label>
+    <input type="number" id="baseSats" value="0" oninput="calculate()">
 
-<label>Aktualna cena BTC (EUR) – automatycznie:</label>
-<input type="number" id="btcPrice" value="0" readonly>
-
-<label>Ile satoshi już masz:</label>
-<input type="number" id="alreadyHave" value="0">
-
-<label>Ile satoshi chcesz mieć:</label>
-<input type="number" id="target" value="100000">
-
-<div class="box">
-    <div>Tempo kupowania: <b>0.50 € / godzinę</b></div>
-    <div>To daje: <span id="satPerSec"></span> sat/s</div>
-</div>
-
-<div class="box">
-    <div>Aktualny stan:</div>
-    <div class="value" id="current"></div>
-</div>
-
-<div class="box">
-    <div>Do celu brakuje:</div>
-    <div class="value" id="remaining"></div>
-    <div id="eta"></div>
+    <p>Akumulacja: 0.50 EUR co godzinę</p>
+    
+    <hr>
+    <p>Aktualna liczba Sats: <span class="stat" id="totalSats">0</span></p>
+    <p>Wartość przy kursie 1mln USD: <span class="stat" id="futureValue">0</span> USD</p>
 </div>
 
 <script>
-let startTime = Date.now();
-let lastPriceFetch = 0;
+    const EUR_PER_HOUR = 0.50;
+    const START_DATE = new Date("2026-04-24T00:00:00"); // Ustaw datę startu
 
-// Pobieranie ceny BTC z Bitvavo (działa z GitHub Pages)
-async function fetchPrice() {
-    const now = Date.now();
-    if (now - lastPriceFetch < 30000) return; // max co 30s
-    lastPriceFetch = now;
-
-    try {
-        const res = await fetch("https://api.bitvavo.com/v2/ticker/price?market=BTCEUR");
-        const data = await res.json();
-        const price = parseFloat(data.price);
-
-        if (!isNaN(price)) {
-            document.getElementById("btcPrice").value = price;
-        }
-    } catch (e) {
-        console.error("Błąd pobierania ceny BTC:", e);
-    }
-}
-
-function update() {
-    fetchPrice();
-
-    const price = parseFloat(document.getElementById("btcPrice").value);
-    const already = parseFloat(document.getElementById("alreadyHave").value);
-    const target = parseFloat(document.getElementById("target").value);
-
-    const eurPerHour = 0.50;
-    const eurPerSec = eurPerHour / 3600;
-    const btcPerSec = eurPerSec / price;
-    const satPerSec = btcPerSec * 100_000_000;
-
-    document.getElementById("satPerSec").textContent = satPerSec.toFixed(6);
-
-    const elapsedSec = (Date.now() - startTime) / 1000;
-    const earned = satPerSec * elapsedSec;
-
-    const current = already + earned;
-    document.getElementById("current").textContent = Math.floor(current).toLocaleString("pl-PL");
-
-    const remaining = target - current;
-    document.getElementById("remaining").textContent = Math.max(0, Math.floor(remaining)).toLocaleString("pl-PL");
-
-    if (remaining > 0) {
-        const secToGoal = remaining / satPerSec;
-        const hours = secToGoal / 3600;
-        document.getElementById("eta").textContent =
-            "Osiągniesz cel za około: " + hours.toFixed(2) + " h";
-    } else {
-        document.getElementById("eta").textContent = "Cel osiągnięty!";
+    async function getBtcPrice() {
+        try {
+            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur');
+            const data = await res.json();
+            return { usd: data.bitcoin.usd, eur: data.bitcoin.eur };
+        } catch (e) { return { usd: 65000, eur: 60000 }; } // fallback
     }
 
-    requestAnimationFrame(update);
-}
+    async function calculate() {
+        const prices = await getBtcPrice();
+        document.getElementById('price').innerText = prices.usd.toLocaleString();
 
-update();
+        const hoursElapsed = (new Date() - START_DATE) / (1000 * 60 * 60);
+        const purchasedEur = hoursElapsed * EUR_PER_HOUR;
+        const purchasedBtc = purchasedEur / prices.eur;
+        const purchasedSats = purchasedBtc * 100_000_000;
+
+        const baseSats = parseFloat(document.getElementById('baseSats').value) || 0;
+        const totalSats = baseSats + purchasedSats;
+
+        document.getElementById('totalSats').innerText = Math.floor(totalSats).toLocaleString();
+        
+        // Obliczenie wartości przy 1 mln USD
+        const futureValue = (totalSats / 100_000_000) * 1000000;
+        document.getElementById('futureValue').innerText = futureValue.toLocaleString(undefined, {maximumFractionDigits: 2});
+    }
+
+    setInterval(calculate, 5000); // Odświeżaj co 5 sekund
+    calculate();
 </script>
 
 </body>
