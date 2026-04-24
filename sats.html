@@ -53,4 +53,75 @@
 
 <div class="box">
     <div>Aktualny stan:</div>
-    <div class="value" id="current">
+    <div class="value" id="current"></div>
+</div>
+
+<div class="box">
+    <div>Do celu brakuje:</div>
+    <div class="value" id="remaining"></div>
+    <div id="eta"></div>
+</div>
+
+<script>
+let startTime = Date.now();
+let lastPriceFetch = 0;
+
+// Pobieranie ceny BTC z Bitvavo (działa z GitHub Pages)
+async function fetchPrice() {
+    const now = Date.now();
+    if (now - lastPriceFetch < 30000) return; // max co 30s
+    lastPriceFetch = now;
+
+    try {
+        const res = await fetch("https://api.bitvavo.com/v2/ticker/price?market=BTCEUR");
+        const data = await res.json();
+        const price = parseFloat(data.price);
+
+        if (!isNaN(price)) {
+            document.getElementById("btcPrice").value = price;
+        }
+    } catch (e) {
+        console.error("Błąd pobierania ceny BTC:", e);
+    }
+}
+
+function update() {
+    fetchPrice();
+
+    const price = parseFloat(document.getElementById("btcPrice").value);
+    const already = parseFloat(document.getElementById("alreadyHave").value);
+    const target = parseFloat(document.getElementById("target").value);
+
+    const eurPerHour = 0.50;
+    const eurPerSec = eurPerHour / 3600;
+    const btcPerSec = eurPerSec / price;
+    const satPerSec = btcPerSec * 100_000_000;
+
+    document.getElementById("satPerSec").textContent = satPerSec.toFixed(6);
+
+    const elapsedSec = (Date.now() - startTime) / 1000;
+    const earned = satPerSec * elapsedSec;
+
+    const current = already + earned;
+    document.getElementById("current").textContent = Math.floor(current).toLocaleString("pl-PL");
+
+    const remaining = target - current;
+    document.getElementById("remaining").textContent = Math.max(0, Math.floor(remaining)).toLocaleString("pl-PL");
+
+    if (remaining > 0) {
+        const secToGoal = remaining / satPerSec;
+        const hours = secToGoal / 3600;
+        document.getElementById("eta").textContent =
+            "Osiągniesz cel za około: " + hours.toFixed(2) + " h";
+    } else {
+        document.getElementById("eta").textContent = "Cel osiągnięty!";
+    }
+
+    requestAnimationFrame(update);
+}
+
+update();
+</script>
+
+</body>
+</html>
