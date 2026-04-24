@@ -7,14 +7,15 @@
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; padding-top: 30px; }
         .card { background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 500px; width: 90%; text-align: center; border: 1px solid #333; }
         
-        .live-counter { font-size: 3.5em; font-weight: bold; color: #f7931a; margin: 10px 0; font-variant-numeric: tabular-nums; }
-        .label-small { font-size: 0.75em; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+        .live-counter { font-size: 3em; font-weight: bold; color: #f7931a; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .label-small { font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         
         input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #2d2d2d; color: #fff; text-align: center; font-size: 1.1em; }
         
-        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .history-item { background: #252525; padding: 10px; border-radius: 8px; }
-        .history-value { display: block; font-weight: bold; color: #fff; font-size: 1em; }
+        .history-value { display: block; font-weight: bold; color: #fff; font-size: 1em; margin-bottom: 2px; }
+        .future-val { font-size: 0.75em; color: #f7931a; }
         
         .main-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .stat-item { background: #252525; padding: 15px; border-radius: 10px; border-top: 3px solid #f7931a; }
@@ -29,10 +30,10 @@
     <div class="live-counter" id="sessionSats">0</div>
 
     <div class="history-grid">
-        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span></div>
-        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span></div>
-        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span></div>
-        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span></div>
+        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture">$0</span></div>
+        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture">$0</span></div>
+        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture">$0</span></div>
+        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture">$0</span></div>
     </div>
 
     <hr>
@@ -64,8 +65,8 @@
         } catch (e) {}
     }
 
-    function getSatsForHours(hours) {
-        return Math.floor((hours * EUR_PER_HOUR / btcPriceEur) * 100_000_000);
+    function calculateFutureValue(sats) {
+        return (sats / 100_000_000) * 1000000;
     }
 
     function updateCalculations() {
@@ -77,10 +78,16 @@
 
         const diff = (ms) => (Date.now() - ms) / (1000 * 60 * 60);
 
-        document.getElementById('todaySats').innerText = getSatsForHours(diff(startOfToday)).toLocaleString();
-        document.getElementById('weekSats').innerText = getSatsForHours(diff(startOfWeek)).toLocaleString();
-        document.getElementById('monthSats').innerText = getSatsForHours(diff(startOfMonth)).toLocaleString();
-        document.getElementById('yearSats').innerText = getSatsForHours(diff(startOfYear)).toLocaleString();
+        const updateField = (id, hours) => {
+            const sats = Math.floor((hours * EUR_PER_HOUR / btcPriceEur) * 100_000_000);
+            document.getElementById(id).innerText = sats.toLocaleString();
+            document.getElementById(id.replace('Sats', 'Future')).innerText = "$" + calculateFutureValue(sats).toLocaleString(undefined, {maximumFractionDigits: 0});
+        };
+
+        updateField('todaySats', diff(startOfToday));
+        updateField('weekSats', diff(startOfWeek));
+        updateField('monthSats', diff(startOfMonth));
+        updateField('yearSats', diff(startOfYear));
 
         const sessionBtc = ((Date.now() - pageLoadTime) / 3600000) * (EUR_PER_HOUR / btcPriceEur);
         document.getElementById('sessionSats').innerText = Math.floor(sessionBtc * 100_000_000).toLocaleString();
