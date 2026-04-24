@@ -2,48 +2,57 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Sats Live Tracker</title>
+    <title>Sats Accumulator Pro</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; padding-top: 50px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; padding-top: 30px; }
         .card { background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 500px; width: 90%; text-align: center; border: 1px solid #333; }
         
-        .live-counter { font-size: 4em; font-weight: bold; color: #f7931a; margin: 20px 0; font-variant-numeric: tabular-nums; }
-        .label-small { font-size: 0.8em; color: #888; text-transform: uppercase; letter-spacing: 2px; }
+        .live-counter { font-size: 3.5em; font-weight: bold; color: #f7931a; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .label-small { font-size: 0.75em; color: #888; text-transform: uppercase; letter-spacing: 2px; }
         
-        input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 8px; border: 1px solid #444; background: #2d2d2d; color: #fff; text-align: center; font-size: 1.2em; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #2d2d2d; color: #fff; text-align: center; font-size: 1.1em; }
         
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .history-item { background: #252525; padding: 10px; border-radius: 8px; }
+        .history-value { display: block; font-weight: bold; color: #fff; font-size: 1em; }
+        
+        .main-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
         .stat-item { background: #252525; padding: 15px; border-radius: 10px; border-top: 3px solid #f7931a; }
-        .stat-value { display: block; font-size: 1.1em; font-weight: bold; margin-top: 5px; color: #fff; }
         
-        .price-badge { font-size: 0.8em; color: #666; margin-bottom: 10px; }
+        hr { border: 0; border-top: 1px solid #333; margin: 20px 0; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div class="price-badge">Aktualny kurs BTC: <span id="price">...</span> USD</div>
-    
     <div class="label-small">Sats kupione w tej sesji</div>
     <div class="live-counter" id="sessionSats">0</div>
 
-    <label class="label-small" style="display:block; margin-top:20px;">Twoje obecne saldo (BTC):</label>
+    <div class="history-grid">
+        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span></div>
+        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span></div>
+        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span></div>
+        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span></div>
+    </div>
+
+    <hr>
+    <label class="label-small">Obecne saldo (BTC):</label>
     <input type="number" id="baseBtc" value="0.00000000" step="0.00000001" oninput="updateCalculations()">
 
-    <div class="stats-grid">
+    <div class="main-stats">
         <div class="stat-item">
             <span class="label-small">Łącznie Sats</span>
-            <span class="stat-value" id="totalSats">0</span>
+            <span class="history-value" id="totalSats">0</span>
         </div>
         <div class="stat-item">
             <span class="label-small">Wartość przy 1mln$</span>
-            <span class="stat-value" id="futureValue">$0</span>
+            <span class="history-value" id="futureValue">$0</span>
         </div>
     </div>
 </div>
 
 <script>
-    let btcPriceEur = 60000; // Domyślna wartość
+    let btcPriceEur = 60000;
     const EUR_PER_HOUR = 0.50;
     const pageLoadTime = Date.now();
 
@@ -52,38 +61,39 @@
             const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur');
             const data = await res.json();
             btcPriceEur = data.bitcoin.eur;
-            document.getElementById('price').innerText = data.bitcoin.usd.toLocaleString();
-        } catch (e) { console.error("Błąd API"); }
+        } catch (e) {}
+    }
+
+    function getSatsForHours(hours) {
+        return Math.floor((hours * EUR_PER_HOUR / btcPriceEur) * 100_000_000);
     }
 
     function updateCalculations() {
-        const now = Date.now();
-        const secondsActive = (now - pageLoadTime) / 1000;
-        
-        // Oblicz ile BTC "wpadło" przez ten czas
-        const eurSpent = secondsActive * (EUR_PER_HOUR / 3600);
-        const btcBought = eurSpent / btcPriceEur;
-        
-        // Sesja: wyświetl tylko pełne satoshi
-        const satsBought = Math.floor(btcBought * 100_000_000);
-        document.getElementById('sessionSats').innerText = satsBought.toLocaleString();
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))); startOfWeek.setHours(0,0,0,0);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-        // Saldo całkowite
+        const diff = (ms) => (Date.now() - ms) / (1000 * 60 * 60);
+
+        document.getElementById('todaySats').innerText = getSatsForHours(diff(startOfToday)).toLocaleString();
+        document.getElementById('weekSats').innerText = getSatsForHours(diff(startOfWeek)).toLocaleString();
+        document.getElementById('monthSats').innerText = getSatsForHours(diff(startOfMonth)).toLocaleString();
+        document.getElementById('yearSats').innerText = getSatsForHours(diff(startOfYear)).toLocaleString();
+
+        const sessionBtc = ((Date.now() - pageLoadTime) / 3600000) * (EUR_PER_HOUR / btcPriceEur);
+        document.getElementById('sessionSats').innerText = Math.floor(sessionBtc * 100_000_000).toLocaleString();
+
         const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
-        const totalBtc = baseBtc + btcBought;
-        const totalSats = Math.floor(totalBtc * 100_000_000);
-
-        document.getElementById('totalSats').innerText = totalSats.toLocaleString();
-        
-        // Wartość przy 1 mln USD
-        const futureValue = totalBtc * 1000000;
-        document.getElementById('futureValue').innerText = "$" + futureValue.toLocaleString(undefined, {maximumFractionDigits: 0});
+        const totalBtc = baseBtc + sessionBtc;
+        document.getElementById('totalSats').innerText = Math.floor(totalBtc * 100_000_000).toLocaleString();
+        document.getElementById('futureValue').innerText = "$" + (totalBtc * 1000000).toLocaleString(undefined, {maximumFractionDigits: 0});
     }
 
     fetchPrice();
-    setInterval(fetchPrice, 60000); // Odświeżaj kurs co minutę
-    setInterval(updateCalculations, 500); // Odświeżaj licznik co pół sekundy
+    setInterval(fetchPrice, 60000);
+    setInterval(updateCalculations, 500);
 </script>
-
 </body>
 </html>
