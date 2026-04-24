@@ -2,104 +2,87 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Sats Live Accumulator</title>
+    <title>Sats Live Tracker</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #1a1a1a; color: #e0e0e0; display: flex; justify-content: center; }
-        .card { background: #2d2d2d; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 550px; width: 100%; text-align: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; padding-top: 50px; }
+        .card { background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 500px; width: 90%; text-align: center; border: 1px solid #333; }
         
-        .live-counter-label { font-size: 0.9em; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .live-counter { font-size: 3.5em; font-weight: bold; color: #f7931a; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .live-counter { font-size: 4em; font-weight: bold; color: #f7931a; margin: 20px 0; font-variant-numeric: tabular-nums; }
+        .label-small { font-size: 0.8em; color: #888; text-transform: uppercase; letter-spacing: 2px; }
         
-        .input-group { margin: 25px 0; text-align: left; }
-        label { display: block; margin-bottom: 8px; color: #bbb; font-size: 0.9em; }
-        input { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #444; background: #1a1a1a; color: white; font-size: 1.1em; }
+        input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 8px; border: 1px solid #444; background: #2d2d2d; color: #fff; text-align: center; font-size: 1.2em; }
         
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; border-top: 1px solid #444; padding-top: 20px; }
-        .stat-box { text-align: left; }
-        .stat-label { font-size: 0.8em; color: #888; }
-        .stat-value { font-size: 1.1em; font-weight: bold; display: block; margin-top: 4px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .stat-item { background: #252525; padding: 15px; border-radius: 10px; border-top: 3px solid #f7931a; }
+        .stat-value { display: block; font-size: 1.1em; font-weight: bold; margin-top: 5px; color: #fff; }
         
-        .price-tag { display: inline-block; padding: 4px 10px; background: #3d3d3d; border-radius: 4px; font-size: 0.85em; margin-bottom: 20px; }
+        .price-badge { font-size: 0.8em; color: #666; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div class="price-tag">Kurs BTC: <span id="price">Ładowanie...</span> USD</div>
+    <div class="price-badge">Aktualny kurs BTC: <span id="price">...</span> USD</div>
     
-    <div class="live-counter-label">Kupione od otwarcia strony (Sats)</div>
-    <div class="live-counter" id="sessionSats">0.00000000</div>
+    <div class="label-small">Sats kupione w tej sesji</div>
+    <div class="live-counter" id="sessionSats">0</div>
 
-    <div class="input-group">
-        <label>Twoje obecne saldo (w BTC):</label>
-        <input type="number" id="baseBtc" value="0.00" step="0.00000001" oninput="updateStaticStats()">
-    </div>
+    <label class="label-small" style="display:block; margin-top:20px;">Twoje obecne saldo (BTC):</label>
+    <input type="number" id="baseBtc" value="0.00000000" step="0.00000001" oninput="updateCalculations()">
 
     <div class="stats-grid">
-        <div class="stat-box">
-            <span class="stat-label">Łączne saldo (Sats)</span>
+        <div class="stat-item">
+            <span class="label-small">Łącznie Sats</span>
             <span class="stat-value" id="totalSats">0</span>
         </div>
-        <div class="stat-box">
-            <span class="stat-label">Przy 1 mln USD</span>
-            <span class="stat-value" id="futureValue">0 USD</span>
+        <div class="stat-item">
+            <span class="label-small">Wartość przy 1mln$</span>
+            <span class="stat-value" id="futureValue">$0</span>
         </div>
     </div>
-    
-    <p style="font-size: 0.75em; color: #666; margin-top: 20px;">
-        Strategia: 0.50 EUR / h (0.000138 EUR co sekundę)
-    </p>
 </div>
 
 <script>
+    let btcPriceEur = 60000; // Domyślna wartość
     const EUR_PER_HOUR = 0.50;
-    const EUR_PER_SEC = EUR_PER_HOUR / 3600;
-    const PAGE_OPEN_TIME = Date.now();
-    
-    let btcPriceEur = 60000; // Fallback
-    let btcPriceUsd = 65000; // Fallback
+    const pageLoadTime = Date.now();
 
     async function fetchPrice() {
         try {
             const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur');
             const data = await res.json();
-            btcPriceUsd = data.bitcoin.usd;
             btcPriceEur = data.bitcoin.eur;
-            document.getElementById('price').innerText = btcPriceUsd.toLocaleString();
-        } catch (e) { console.error("Błąd pobierania kursu"); }
+            document.getElementById('price').innerText = data.bitcoin.usd.toLocaleString();
+        } catch (e) { console.error("Błąd API"); }
     }
 
-    function updateLiveCounter() {
-        const secondsElapsed = (Date.now() - PAGE_OPEN_TIME) / 1000;
-        const earnedEur = secondsElapsed * EUR_PER_SEC;
-        const earnedBtc = earnedEur / btcPriceEur;
-        const earnedSats = earnedBtc * 100000000;
-
-        // Główny duży licznik (Sats od otwarcia strony)
-        document.getElementById('sessionSats').innerText = earnedSats.toFixed(8);
-
-        // Aktualizacja sumy całkowitej i wartości przyszłej
-        const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
-        const totalBtc = baseBtc + earnedBtc;
-        const totalSats = totalBtc * 100000000;
-
-        document.getElementById('totalSats').innerText = Math.floor(totalSats).toLocaleString();
+    function updateCalculations() {
+        const now = Date.now();
+        const secondsActive = (now - pageLoadTime) / 1000;
         
-        const futureVal = totalBtc * 1000000;
-        document.getElementById('futureValue').innerText = futureVal.toLocaleString(undefined, {
-            minimumFractionDigits: 2, 
-            maximumFractionDigits: 2
-        }) + " USD";
+        // Oblicz ile BTC "wpadło" przez ten czas
+        const eurSpent = secondsActive * (EUR_PER_HOUR / 3600);
+        const btcBought = eurSpent / btcPriceEur;
+        
+        // Sesja: wyświetl tylko pełne satoshi
+        const satsBought = Math.floor(btcBought * 100_000_000);
+        document.getElementById('sessionSats').innerText = satsBought.toLocaleString();
+
+        // Saldo całkowite
+        const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
+        const totalBtc = baseBtc + btcBought;
+        const totalSats = Math.floor(totalBtc * 100_000_000);
+
+        document.getElementById('totalSats').innerText = totalSats.toLocaleString();
+        
+        // Wartość przy 1 mln USD
+        const futureValue = totalBtc * 1000000;
+        document.getElementById('futureValue').innerText = "$" + futureValue.toLocaleString(undefined, {maximumFractionDigits: 0});
     }
 
-    // Odświeżanie ceny rzadziej (co 30s), a licznika co 50ms dla płynności
     fetchPrice();
-    setInterval(fetchPrice, 30000);
-    setInterval(updateLiveCounter, 50);
-
-    function updateStaticStats() {
-        updateLiveCounter();
-    }
+    setInterval(fetchPrice, 60000); // Odświeżaj kurs co minutę
+    setInterval(updateCalculations, 500); // Odświeżaj licznik co pół sekundy
 </script>
 
 </body>
