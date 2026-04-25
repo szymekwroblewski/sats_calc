@@ -10,7 +10,8 @@
         .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 500px; width: 100%; border: 1px solid var(--border); }
         
         .header-label { font-size: 0.7em; color: #888; text-transform: uppercase; text-align: center; margin-bottom: 5px; }
-        .main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin-bottom: 20px; }
+        .main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin: 5px 0; }
+        .session-future { text-align: center; font-size: 0.85em; color: #777; margin-bottom: 20px; }
         
         .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 20px; text-align: center; }
         .progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
@@ -29,7 +30,6 @@
         
         .btn-save { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: bold; }
         .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; justify-content: space-between; align-items: center; }
-        button { cursor: pointer; background: var(--accent); border: none; padding: 5px 10px; border-radius: 5px; color: white; }
     </style>
 </head>
 <body id="body">
@@ -37,6 +37,7 @@
 <div class="card">
     <div class="header-label">Sats kupione w tej sesji</div>
     <div class="main-counter" id="sessionSats">0</div>
+    <div class="session-future" id="sessionFuture">...</div>
 
     <div class="goal-box">
         <div class="label-small">Droga do 0.1 BTC</div>
@@ -74,9 +75,8 @@
 <script>
     const TARGET_BTC = 0.1;
     let btcPriceUsd = 65000;
-    let eurToUsd = 1.08; // W przybliżeniu
     const pageLoadTime = Date.now();
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbycbjDYb4ja2PKpVtfiZQGd3g0cjuaTUm171LEJo0XlgEYrrXrTsa-WWYRJGV72bxR1/exec'; // <--- WKLEJ TUTAJ SWÓJ URL 
+    const WEB_APP_URL = 'TWÓJ_URL_Z_GOOGLE_APPS_SCRIPT'; 
 
     async function refreshData() {
         try {
@@ -91,11 +91,14 @@
     function updateCalculations() {
         const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
         const dailyEur = parseFloat(document.getElementById('dailyEur').value) || 0;
-        const dailyBtc = (dailyEur * eurToUsd) / btcPriceUsd;
+        const dailyBtc = (dailyEur * 1.08) / btcPriceUsd; // Zakładamy 1.08 kurs EUR/USD
         
         // Sesja
         const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
-        document.getElementById('sessionSats').innerText = Math.floor(sessionBtc * 100_000_000).toLocaleString();
+        const sSats = Math.floor(sessionBtc * 100_000_000);
+        document.getElementById('sessionSats').innerText = sSats.toLocaleString();
+        const sUsd = (sSats / 100_000_000) * 1_000_000;
+        document.getElementById('sessionFuture').innerHTML = `$${Math.floor(sUsd).toLocaleString()} <span class="pln-val">(${(sUsd * 4.0).toLocaleString()} PLN)</span>`;
 
         // Cel
         const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
@@ -106,20 +109,18 @@
         document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
         document.getElementById('progressFill').style.width = Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
         
-        // Pola czasowe z wyceną 1 mln USD
+        // Pola czasowe
         const updateField = (id, days) => {
             const sats = Math.floor(days * dailyBtc * 100_000_000);
             const valUsd = (sats / 100_000_000) * 1_000_000;
-            const valPln = valUsd * 4.0; // Uproszczony kurs USD/PLN
+            const valPln = valUsd * 4.0;
             document.getElementById(id).innerText = sats.toLocaleString();
             document.getElementById(id.replace('Sats', 'Future')).innerHTML = 
                 `$${Math.floor(valUsd).toLocaleString()} <span class="pln-val">(${Math.floor(valPln).toLocaleString()} PLN)</span>`;
         };
 
-        updateField('todaySats', 1);
-        updateField('weekSats', 7);
-        updateField('monthSats', 30);
-        updateField('yearSats', 365);
+        updateField('todaySats', 1); updateField('weekSats', 7);
+        updateField('monthSats', 30); updateField('yearSats', 365);
     }
 
     async function saveRecord() {
