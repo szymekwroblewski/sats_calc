@@ -4,23 +4,24 @@
     <meta charset="UTF-8">
     <title>Sats Accumulator Pro</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; padding-top: 30px; }
-        .card { background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 500px; width: 90%; text-align: center; border: 1px solid #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: #e0e0e0; display: flex; justify-content: center; padding-top: 20px; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 500px; width: 95%; text-align: center; border: 1px solid #333; }
         
         .live-counter { font-size: 3em; font-weight: bold; color: #f7931a; margin: 10px 0; font-variant-numeric: tabular-nums; }
         .label-small { font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         
         input { width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #2d2d2d; color: #fff; text-align: center; font-size: 1.1em; }
         
-        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .history-item { background: #252525; padding: 10px; border-radius: 8px; }
-        .history-value { display: block; font-weight: bold; color: #fff; font-size: 1em; margin-bottom: 2px; }
-        .future-val { font-size: 0.75em; color: #f7931a; }
+        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .history-item { background: #252525; padding: 8px; border-radius: 8px; }
+        .history-value { display: block; font-weight: bold; color: #fff; font-size: 0.95em; }
+        .future-val { font-size: 0.7em; color: #f7931a; display: block; }
+        .pln-val { font-size: 0.65em; color: #777; }
         
-        .main-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .stat-item { background: #252525; padding: 15px; border-radius: 10px; border-top: 3px solid #f7931a; }
+        .main-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .stat-item { background: #252525; padding: 10px; border-radius: 10px; border-top: 3px solid #f7931a; }
         
-        hr { border: 0; border-top: 1px solid #333; margin: 20px 0; }
+        hr { border: 0; border-top: 1px solid #333; margin: 15px 0; }
     </style>
 </head>
 <body>
@@ -30,10 +31,10 @@
     <div class="live-counter" id="sessionSats">0</div>
 
     <div class="history-grid">
-        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture">$0</span></div>
-        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture">$0</span></div>
-        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture">$0</span></div>
-        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture">$0</span></div>
+        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture">$0 <span class="pln-val" id="todayPln">(0 PLN)</span></span></div>
+        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture">$0 <span class="pln-val" id="weekPln">(0 PLN)</span></span></div>
+        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture">$0 <span class="pln-val" id="monthPln">(0 PLN)</span></span></div>
+        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture">$0 <span class="pln-val" id="yearPln">(0 PLN)</span></span></div>
     </div>
 
     <hr>
@@ -54,19 +55,22 @@
 
 <script>
     let btcPriceEur = 60000;
+    let usdToPln = 4.0;
     const EUR_PER_HOUR = 0.50;
     const pageLoadTime = Date.now();
 
-    async function fetchPrice() {
+    async function fetchMarketData() {
         try {
-            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd,eur');
+            // Pobieramy cenę BTC w EUR oraz kurs USD do PLN
+            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd&include_market_cap=false&include_24hr_change=false');
             const data = await res.json();
             btcPriceEur = data.bitcoin.eur;
-        } catch (e) {}
-    }
-
-    function calculateFutureValue(sats) {
-        return (sats / 100_000_000) * 1000000;
+            // CoinGecko nie daje kursu walut bezpośrednio, używamy uśrednionego kursu
+            // Dla prostoty aplikacji używamy stałego API do kursu walut:
+            const currencyRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+            const currencyData = await currencyRes.json();
+            usdToPln = currencyData.rates.PLN;
+        } catch (e) { console.error("Błąd pobierania danych"); }
     }
 
     function updateCalculations() {
@@ -80,8 +84,10 @@
 
         const updateField = (id, hours) => {
             const sats = Math.floor((hours * EUR_PER_HOUR / btcPriceEur) * 100_000_000);
+            const valUsd = (sats / 100_000_000) * 1000000;
+            const valPln = valUsd * usdToPln;
             document.getElementById(id).innerText = sats.toLocaleString();
-            document.getElementById(id.replace('Sats', 'Future')).innerText = "$" + calculateFutureValue(sats).toLocaleString(undefined, {maximumFractionDigits: 0});
+            document.getElementById(id.replace('Sats', 'Future')).innerHTML = `$${valUsd.toLocaleString(undefined, {maximumFractionDigits: 0})} <span class="pln-val">(${Math.floor(valPln).toLocaleString()} PLN)</span>`;
         };
 
         updateField('todaySats', diff(startOfToday));
@@ -98,8 +104,8 @@
         document.getElementById('futureValue').innerText = "$" + (totalBtc * 1000000).toLocaleString(undefined, {maximumFractionDigits: 0});
     }
 
-    fetchPrice();
-    setInterval(fetchPrice, 60000);
+    fetchMarketData();
+    setInterval(fetchMarketData, 600000); // Kursy walut nie zmieniają się tak często
     setInterval(updateCalculations, 500);
 </script>
 </body>
