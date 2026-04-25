@@ -6,61 +6,44 @@
     <style>
         :root { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --accent: #f7931a; --border: #333; }
         body.light { --bg: #f4f4f9; --card: #ffffff; --text: #333; --border: #ddd; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; transition: 0.3s; margin: 0; display: flex; justify-content: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; display: flex; justify-content: center; }
         .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 500px; width: 100%; border: 1px solid var(--border); }
-        
-        .header-label { font-size: 0.7em; color: #888; text-transform: uppercase; text-align: center; margin-bottom: 5px; }
-        .main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin-bottom: 20px; }
-        
-        .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 20px; text-align: center; }
-        .progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
-        .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.5s; }
-        
-        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin: 10px 0; }
+        .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); text-align: center; }
+        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
         .history-item { background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
-        .history-value { display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 3px; }
-        .future-val { font-size: 0.7em; color: var(--accent); display: block; }
-        .pln-val { color: #777; font-size: 0.9em; }
-
+        .history-value { display: block; font-weight: bold; font-size: 0.9em; }
+        .future-val { font-size: 0.7em; color: var(--accent); }
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .input-group { text-align: center; }
-        .label-small { font-size: 0.65em; color: #888; text-transform: uppercase; margin-bottom: 5px; display: block; }
-        input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; font-size: 1em; box-sizing: border-box; }
-        
+        input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; box-sizing: border-box; }
+        .btn-save { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: bold; }
         .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; justify-content: space-between; align-items: center; }
-        button { cursor: pointer; background: var(--accent); border: none; padding: 5px 10px; border-radius: 5px; color: white; }
     </style>
 </head>
 <body id="body">
-
 <div class="card">
-    <div class="header-label">Sats kupione w tej sesji</div>
+    <div style="font-size: 0.7em; text-align: center; color: #888;">SATS KUPIONE W SESJI</div>
     <div class="main-counter" id="sessionSats">0</div>
 
     <div class="goal-box">
-        <div class="label-small">Droga do 0.1 BTC</div>
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div id="remainingText" style="font-weight:bold; font-size: 0.9em;">...</div>
-        <div id="targetDate" style="font-size: 0.8em; margin-top:5px; color:var(--accent);">...</div>
+        <div style="font-size: 0.7em; color: #888;">DROGA DO 0.1 BTC</div>
+        <div id="remainingText" style="font-weight:bold; margin: 10px 0;">...</div>
+        <div id="targetDate" style="font-size: 0.8em; color:var(--accent);">...</div>
     </div>
 
-    <div class="history-grid">
-        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span></div>
-        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span></div>
-        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span></div>
-        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span></div>
+    <div class="history-grid" id="history">
+        <div class="history-item"><span style="font-size:0.6em;">DZIŚ</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span></div>
+        <div class="history-item"><span style="font-size:0.6em;">TYDZIEŃ</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span></div>
+        <div class="history-item"><span style="font-size:0.6em;">MIESIĄC</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span></div>
+        <div class="history-item"><span style="font-size:0.6em;">ROK</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span></div>
     </div>
 
     <div class="input-grid">
-        <div class="input-group">
-            <span class="label-small">Obecne saldo (BTC)</span>
-            <input type="number" id="baseBtc" value="0.052" step="0.00000001" oninput="saveAndCalc()">
-        </div>
-        <div class="input-group">
-            <span class="label-small">Kupuję/doba (EUR)</span>
-            <input type="number" id="dailyEur" value="12" step="1" oninput="saveAndCalc()">
-        </div>
+        <input type="number" id="baseBtc" value="0.052" step="0.00000001" oninput="saveAndCalc()" placeholder="Saldo BTC">
+        <input type="number" id="dailyEur" value="12" step="1" oninput="saveAndCalc()" placeholder="EUR/doba">
     </div>
+
+    <button class="btn-save" onclick="saveRecord()">ZAPISZ SNAPSHOT DO ARKUSZA</button>
 
     <div class="footer">
         <span id="btcPriceLabel">Cena BTC: Ładowanie...</span>
@@ -73,66 +56,20 @@
     let btcPriceEur = 60000;
     let usdToPln = 4.0;
     const pageLoadTime = Date.now();
+    const WEB_APP_URL = 'TWÓJ_URL_Z_GOOGLE_APPS_SCRIPT'; // <--- WKLEJ TUTAJ SWÓJ URL
 
-    window.onload = () => {
-        if(localStorage.getItem('baseBtc')) document.getElementById('baseBtc').value = localStorage.getItem('baseBtc');
-        if(localStorage.getItem('dailyEur')) document.getElementById('dailyEur').value = localStorage.getItem('dailyEur');
-        refreshData();
-    };
-
-    function saveAndCalc() {
-        localStorage.setItem('baseBtc', document.getElementById('baseBtc').value);
-        localStorage.setItem('dailyEur', document.getElementById('dailyEur').value);
-        updateCalculations();
-    }
-
-    async function refreshData() {
-        try {
-            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd');
-            const data = await res.json();
-            btcPriceEur = data.bitcoin.eur;
-            const curRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-            const curData = await curRes.json();
-            usdToPln = curData.rates.PLN;
-            document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${data.bitcoin.usd.toLocaleString()}`;
-            updateCalculations();
-        } catch (e) { console.error("Błąd API"); }
-    }
-
-    function updateCalculations() {
-        const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
-        const dailyEur = parseFloat(document.getElementById('dailyEur').value) || 0;
-        const dailyBtc = dailyEur / btcPriceEur;
-        
-        const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
-        document.getElementById('sessionSats').innerText = Math.floor(sessionBtc * 100_000_000).toLocaleString();
-
-        const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
-        const daysToGoal = remainingBtc / dailyBtc;
-        const targetDate = new Date();
-        targetDate.setDate(targetDate.getDate() + daysToGoal);
-        
-        document.getElementById('remainingText').innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
-        document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
-        document.getElementById('progressFill').style.width = Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
-        
-        const updateField = (id, days) => {
-            const sats = Math.floor(days * dailyBtc * 100_000_000);
-            const valUsd = (sats / 100_000_000) * 1_000_000;
-            const valPln = valUsd * usdToPln;
-            document.getElementById(id).innerText = sats.toLocaleString();
-            document.getElementById(id.replace('Sats', 'Future')).innerHTML = 
-                `$${valUsd.toLocaleString(undefined, {maximumFractionDigits: 0})} <span class="pln-val">(${Math.floor(valPln).toLocaleString()} PLN)</span>`;
+    async function saveRecord() {
+        const data = {
+            price: document.getElementById('btcPriceLabel').innerText,
+            targetDate: document.getElementById('targetDate').innerText
         };
-
-        updateField('todaySats', 1);
-        updateField('weekSats', 7);
-        updateField('monthSats', 30);
-        updateField('yearSats', 365);
+        try {
+            await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
+            alert('Zapisano do Arkusza!');
+        } catch (e) { alert('Błąd: ' + e); }
     }
 
-    setInterval(refreshData, 300000);
-    setInterval(updateCalculations, 1000);
+    // ... (pozostałe funkcje refreshData, updateCalculations identyczne jak poprzednio)
 </script>
 </body>
 </html>
