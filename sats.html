@@ -9,18 +9,19 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; transition: 0.3s; margin: 0; display: flex; justify-content: center; }
         .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 500px; width: 100%; border: 1px solid var(--border); }
         
-        /* Sekcje z zielonej ramki */
         .header-label { font-size: 0.7em; color: #888; text-transform: uppercase; text-align: center; margin-bottom: 5px; }
         .main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin-bottom: 20px; }
+        
         .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 20px; text-align: center; }
         .progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
         .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.5s; }
+        
         .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .history-item { background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
-        .history-value { display: block; font-weight: bold; font-size: 0.9em; }
-        .future-val { font-size: 0.7em; color: var(--accent); }
+        .history-value { display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 3px; }
+        .future-val { font-size: 0.7em; color: var(--accent); display: block; }
+        .pln-val { color: #777; font-size: 0.9em; }
 
-        /* Sekcja wejściowa */
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .input-group { text-align: center; }
         .label-small { font-size: 0.65em; color: #888; text-transform: uppercase; margin-bottom: 5px; display: block; }
@@ -44,9 +45,10 @@
     </div>
 
     <div class="history-grid">
-        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span></div>
-        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span></div>
-        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span></div>
+        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span></div>
+        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span></div>
+        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span></div>
+        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span></div>
     </div>
 
     <div class="input-grid">
@@ -69,6 +71,7 @@
 <script>
     const TARGET_BTC = 0.1;
     let btcPriceEur = 60000;
+    let usdToPln = 4.0;
     const pageLoadTime = Date.now();
 
     window.onload = () => {
@@ -88,6 +91,9 @@
             const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd');
             const data = await res.json();
             btcPriceEur = data.bitcoin.eur;
+            const curRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+            const curData = await curRes.json();
+            usdToPln = curData.rates.PLN;
             document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${data.bitcoin.usd.toLocaleString()}`;
             updateCalculations();
         } catch (e) { console.error("Błąd API"); }
@@ -98,11 +104,9 @@
         const dailyEur = parseFloat(document.getElementById('dailyEur').value) || 0;
         const dailyBtc = dailyEur / btcPriceEur;
         
-        // Logika sesji
         const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
         document.getElementById('sessionSats').innerText = Math.floor(sessionBtc * 100_000_000).toLocaleString();
 
-        // Cel
         const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
         const daysToGoal = remainingBtc / dailyBtc;
         const targetDate = new Date();
@@ -112,13 +116,19 @@
         document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
         document.getElementById('progressFill').style.width = Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
         
-        // Czasowe
-        const now = new Date();
-        const getSats = (days) => Math.floor(days * dailyBtc * 100_000_000).toLocaleString();
-        document.getElementById('todaySats').innerText = getSats(1);
-        document.getElementById('weekSats').innerText = getSats(7);
-        document.getElementById('monthSats').innerText = getSats(30);
-        document.getElementById('yearSats').innerText = getSats(365);
+        const updateField = (id, days) => {
+            const sats = Math.floor(days * dailyBtc * 100_000_000);
+            const valUsd = (sats / 100_000_000) * 1_000_000;
+            const valPln = valUsd * usdToPln;
+            document.getElementById(id).innerText = sats.toLocaleString();
+            document.getElementById(id.replace('Sats', 'Future')).innerHTML = 
+                `$${valUsd.toLocaleString(undefined, {maximumFractionDigits: 0})} <span class="pln-val">(${Math.floor(valPln).toLocaleString()} PLN)</span>`;
+        };
+
+        updateField('todaySats', 1);
+        updateField('weekSats', 7);
+        updateField('monthSats', 30);
+        updateField('yearSats', 365);
     }
 
     setInterval(refreshData, 300000);
