@@ -62,31 +62,38 @@
 </div>
 
 <script>
-    const EUR_PER_HOUR = 0.50;
-    const TARGET_BTC = 0.1;
+// Zmienne globalne na początku skryptu
+let btcPriceEur = 60000;
+let btcPriceUsd = 65000;
+let usdToPln = 4.0;
 
-    function toggleTheme() { document.getElementById('body').classList.toggle('light'); }
-
-    async function updateCalculations() {
-        // Logika pobierania danych...
+// Funkcja tylko do pobierania danych (zmniejszamy częstotliwość!)
+async function refreshData() {
+    try {
         const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd');
         const data = await res.json();
-        const btcPriceEur = data.bitcoin.eur;
-        document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${data.bitcoin.usd.toLocaleString()}`;
-
-        const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
-        const totalBtc = baseBtc + (((Date.now() - 1713960000000) / 3600000) * (EUR_PER_HOUR / btcPriceEur));
-
-        // Data docelowa
-        const remainingHours = ((TARGET_BTC - totalBtc) * btcPriceEur) / EUR_PER_HOUR;
-        const targetDate = new Date(Date.now() + remainingHours * 3600000);
-        document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
-
-        // ... reszta logiki wyświetlania
+        btcPriceEur = data.bitcoin.eur;
+        btcPriceUsd = data.bitcoin.usd;
+        
+        const curRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const curData = await curRes.json();
+        usdToPln = curData.rates.PLN;
+        
+        document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${btcPriceUsd.toLocaleString()}`;
+    } catch (e) {
+        console.error("Błąd sieci", e);
     }
-    
-    // Inicjalizacja...
-    setInterval(updateCalculations, 1000);
+}
+
+// Główna funkcja obliczeniowa NIE powinna pobierać danych (tylko używać zmiennych)
+function updateCalculations() {
+    // ... tutaj Twoja logika obliczeń używająca już pobranych zmiennych btcPriceEur, etc. ...
+}
+
+// Inicjalizacja:
+refreshData(); // Pobierz raz na start
+setInterval(refreshData, 300000); // Pobieraj dane tylko raz na 5 minut (300 000 ms)
+setInterval(updateCalculations, 500); // Obliczaj płynnie co 0.5s
 </script>
 </body>
 </html>
