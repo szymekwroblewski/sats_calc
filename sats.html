@@ -21,6 +21,7 @@
         .goal-box { background: #2d2d2d; padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid #f7931a; }
         .progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
         .progress-fill { background: #f7931a; height: 100%; width: 0%; transition: width 0.5s; }
+        .time-to-goal { font-size: 0.8em; color: #aaa; margin-top: 8px; }
         
         hr { border: 0; border-top: 1px solid #333; margin: 15px 0; }
     </style>
@@ -35,6 +36,7 @@
         <div class="label-small">Droga do 0.1 BTC</div>
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <div style="font-weight:bold; font-size: 0.9em;" id="remainingText">Obliczanie...</div>
+        <div class="time-to-goal" id="timeToGoal">Szacowany czas: ...</div>
     </div>
 
     <div class="history-grid">
@@ -79,11 +81,19 @@
         const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
         const totalBtc = baseBtc + sessionBtc;
 
-        // Cel
-        const remaining = Math.max(0, TARGET_BTC - totalBtc);
-        const progress = Math.min(100, (totalBtc / TARGET_BTC) * 100);
-        document.getElementById('remainingText').innerText = `Brakuje: ${remaining.toFixed(6)} BTC`;
-        document.getElementById('progressFill').style.width = progress + "%";
+        // Cel i czas
+        const remainingBtc = Math.max(0, TARGET_BTC - totalBtc);
+        const remainingHours = (remainingBtc * btcPriceEur) / EUR_PER_HOUR;
+        
+        const years = Math.floor(remainingHours / 8760);
+        const months = Math.floor((remainingHours % 8760) / 730);
+        const days = Math.floor((remainingHours % 730) / 24);
+        const hours = Math.floor(remainingHours % 24);
+        const minutes = Math.floor((remainingHours * 60) % 60);
+
+        document.getElementById('remainingText').innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
+        document.getElementById('timeToGoal').innerText = `Czas do celu: ${years}l, ${months}m, ${days}d, ${hours}h, ${minutes}m`;
+        document.getElementById('progressFill').style.width = Math.min(100, (totalBtc / TARGET_BTC) * 100) + "%";
 
         const updateField = (id, hours) => {
             const sats = Math.floor((hours * EUR_PER_HOUR / btcPriceEur) * 100_000_000);
