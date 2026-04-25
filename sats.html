@@ -9,11 +9,11 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; display: flex; justify-content: center; }
         .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 500px; width: 100%; border: 1px solid var(--border); }
         .main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin: 10px 0; }
-        .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); text-align: center; }
-        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+        .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); text-align: center; margin-bottom: 20px; }
+        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .history-item { background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
         .history-value { display: block; font-weight: bold; font-size: 0.9em; }
-        .future-val { font-size: 0.7em; color: var(--accent); }
+        .future-val { font-size: 0.7em; color: var(--accent); display: block; }
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; box-sizing: border-box; }
         .btn-save { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: bold; }
@@ -24,27 +24,22 @@
 <div class="card">
     <div style="font-size: 0.7em; text-align: center; color: #888;">SATS KUPIONE W SESJI</div>
     <div class="main-counter" id="sessionSats">0</div>
-
     <div class="goal-box">
         <div style="font-size: 0.7em; color: #888;">DROGA DO 0.1 BTC</div>
-        <div id="remainingText" style="font-weight:bold; margin: 10px 0;">...</div>
+        <div id="remainingText" style="font-weight:bold; margin: 10px 0;">Obliczanie...</div>
         <div id="targetDate" style="font-size: 0.8em; color:var(--accent);">...</div>
     </div>
-
-    <div class="history-grid" id="history">
+    <div class="history-grid">
         <div class="history-item"><span style="font-size:0.6em;">DZIŚ</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span></div>
         <div class="history-item"><span style="font-size:0.6em;">TYDZIEŃ</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span></div>
         <div class="history-item"><span style="font-size:0.6em;">MIESIĄC</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span></div>
-        <div class="history-item"><span style="font-size:0.6em;">ROK</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span></div>
+        <div class="history-item"><span class="label-small">ROK</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span></div>
     </div>
-
     <div class="input-grid">
-        <input type="number" id="baseBtc" value="0.052" step="0.00000001" oninput="saveAndCalc()" placeholder="Saldo BTC">
-        <input type="number" id="dailyEur" value="12" step="1" oninput="saveAndCalc()" placeholder="EUR/doba">
+        <input type="number" id="baseBtc" value="0.052" step="0.00000001" oninput="saveAndCalc()">
+        <input type="number" id="dailyEur" value="12" step="1" oninput="saveAndCalc()">
     </div>
-
     <button class="btn-save" onclick="saveRecord()">ZAPISZ SNAPSHOT DO ARKUSZA</button>
-
     <div class="footer">
         <span id="btcPriceLabel">Cena BTC: Ładowanie...</span>
         <button onclick="document.getElementById('body').classList.toggle('light')">☀️/🌙</button>
@@ -54,22 +49,51 @@
 <script>
     const TARGET_BTC = 0.1;
     let btcPriceEur = 60000;
-    let usdToPln = 4.0;
-    const pageLoadTime = Date.now();
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbycbjDYb4ja2PKpVtfiZQGd3g0cjuaTUm171LEJo0XlgEYrrXrTsa-WWYRJGV72bxR1/exec'; // <--- WKLEJ TUTAJ SWÓJ URL
 
+    async function refreshData() {
+        try {
+            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd');
+            const data = await res.json();
+            btcPriceEur = data.bitcoin.eur;
+            document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${data.bitcoin.usd.toLocaleString()}`;
+        } catch (e) {
+            console.error("Błąd API, używam zapasowej ceny", e);
+        }
+        updateCalculations();
+    }
+
+    function updateCalculations() {
+        const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
+        const dailyEur = parseFloat(document.getElementById('dailyEur').value) || 0;
+        const dailyBtc = dailyEur / btcPriceEur;
+        
+        const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
+        const daysToGoal = remainingBtc / dailyBtc;
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + daysToGoal);
+        
+        document.getElementById('remainingText').innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
+        document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
+        
+        const getSats = (days) => Math.floor(days * dailyBtc * 100_000_000).toLocaleString();
+        document.getElementById('todaySats').innerText = getSats(1);
+        document.getElementById('weekSats').innerText = getSats(7);
+        document.getElementById('monthSats').innerText = getSats(30);
+        document.getElementById('yearSats').innerText = getSats(365);
+    }
+
     async function saveRecord() {
-        const data = {
-            price: document.getElementById('btcPriceLabel').innerText,
-            targetDate: document.getElementById('targetDate').innerText
-        };
+        const data = { price: document.getElementById('btcPriceLabel').innerText, targetDate: document.getElementById('targetDate').innerText };
         try {
             await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) });
             alert('Zapisano do Arkusza!');
         } catch (e) { alert('Błąd: ' + e); }
     }
 
-    // ... (pozostałe funkcje refreshData, updateCalculations identyczne jak poprzednio)
+    function saveAndCalc() { updateCalculations(); }
+    refreshData();
+    setInterval(refreshData, 300000);
 </script>
 </body>
 </html>
