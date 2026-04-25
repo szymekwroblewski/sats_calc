@@ -8,13 +8,24 @@
         body.light { --bg: #f4f4f9; --card: #ffffff; --text: #333; --border: #ddd; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; transition: 0.3s; margin: 0; display: flex; justify-content: center; }
         .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 500px; width: 100%; border: 1px solid var(--border); }
+        
+        /* Sekcje z zielonej ramki */
+        .header-label { font-size: 0.7em; color: #888; text-transform: uppercase; text-align: center; margin-bottom: 5px; }
+        .main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin-bottom: 20px; }
+        .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 20px; text-align: center; }
+        .progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
+        .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.5s; }
+        .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .history-item { background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .history-value { display: block; font-weight: bold; font-size: 0.9em; }
+        .future-val { font-size: 0.7em; color: var(--accent); }
+
+        /* Sekcja wejściowa */
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .input-group { text-align: center; }
         .label-small { font-size: 0.65em; color: #888; text-transform: uppercase; margin-bottom: 5px; display: block; }
         input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; font-size: 1em; box-sizing: border-box; }
-        .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid var(--accent); text-align: center; }
-        .progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
-        .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.5s; }
+        
         .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; justify-content: space-between; align-items: center; }
         button { cursor: pointer; background: var(--accent); border: none; padding: 5px 10px; border-radius: 5px; color: white; }
     </style>
@@ -22,6 +33,22 @@
 <body id="body">
 
 <div class="card">
+    <div class="header-label">Sats kupione w tej sesji</div>
+    <div class="main-counter" id="sessionSats">0</div>
+
+    <div class="goal-box">
+        <div class="label-small">Droga do 0.1 BTC</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div id="remainingText" style="font-weight:bold; font-size: 0.9em;">...</div>
+        <div id="targetDate" style="font-size: 0.8em; margin-top:5px; color:var(--accent);">...</div>
+    </div>
+
+    <div class="history-grid">
+        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span></div>
+        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span></div>
+        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span></div>
+    </div>
+
     <div class="input-grid">
         <div class="input-group">
             <span class="label-small">Obecne saldo (BTC)</span>
@@ -33,13 +60,6 @@
         </div>
     </div>
 
-    <div class="goal-box">
-        <div class="label-small">Droga do 0.1 BTC</div>
-        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-        <div id="remainingText" style="font-weight:bold; font-size: 0.9em;">...</div>
-        <div id="targetDate" style="font-size: 0.8em; margin-top:5px; color:var(--accent);">...</div>
-    </div>
-
     <div class="footer">
         <span id="btcPriceLabel">Cena BTC: Ładowanie...</span>
         <button onclick="document.getElementById('body').classList.toggle('light')">☀️/🌙</button>
@@ -49,6 +69,7 @@
 <script>
     const TARGET_BTC = 0.1;
     let btcPriceEur = 60000;
+    const pageLoadTime = Date.now();
 
     window.onload = () => {
         if(localStorage.getItem('baseBtc')) document.getElementById('baseBtc').value = localStorage.getItem('baseBtc');
@@ -75,22 +96,33 @@
     function updateCalculations() {
         const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
         const dailyEur = parseFloat(document.getElementById('dailyEur').value) || 0;
-        
-        // Oblicz ile BTC dziennie kupujesz
         const dailyBtc = dailyEur / btcPriceEur;
         
+        // Logika sesji
+        const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
+        document.getElementById('sessionSats').innerText = Math.floor(sessionBtc * 100_000_000).toLocaleString();
+
+        // Cel
         const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
         const daysToGoal = remainingBtc / dailyBtc;
-        
         const targetDate = new Date();
         targetDate.setDate(targetDate.getDate() + daysToGoal);
         
         document.getElementById('remainingText').innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
         document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
         document.getElementById('progressFill').style.width = Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
+        
+        // Czasowe
+        const now = new Date();
+        const getSats = (days) => Math.floor(days * dailyBtc * 100_000_000).toLocaleString();
+        document.getElementById('todaySats').innerText = getSats(1);
+        document.getElementById('weekSats').innerText = getSats(7);
+        document.getElementById('monthSats').innerText = getSats(30);
+        document.getElementById('yearSats').innerText = getSats(365);
     }
 
-    setInterval(refreshData, 300000); // 5 minut
+    setInterval(refreshData, 300000);
+    setInterval(updateCalculations, 1000);
 </script>
 </body>
 </html>
