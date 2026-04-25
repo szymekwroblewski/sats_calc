@@ -4,29 +4,22 @@
     <meta charset="UTF-8">
     <title>Sats Accumulator Pro</title>
     <style>
-        :root {
-            --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --accent: #f7931a; --border: #333;
-        }
+        :root { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --accent: #f7931a; --border: #333; }
         body.light { --bg: #f4f4f9; --card: #ffffff; --text: #333; --border: #ddd; }
-        
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 20px; transition: 0.3s; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 20px; transition: 0.3s; margin: 0; }
         .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 500px; width: 100%; text-align: center; border: 1px solid var(--border); }
-        
-        .live-counter { font-size: 3em; font-weight: bold; color: var(--accent); margin: 10px 0; }
+        .live-counter { font-size: 3em; font-weight: bold; color: var(--accent); margin: 10px 0; font-variant-numeric: tabular-nums; }
         .label-small { font-size: 0.7em; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        
-        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; font-size: 1.1em; }
-        
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; font-size: 1.1em; box-sizing: border-box; }
         .history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .history-item { background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
         .history-value { display: block; font-weight: bold; font-size: 0.9em; }
         .future-val { font-size: 0.7em; color: var(--accent); }
-        
+        .pln-val { font-size: 0.65em; color: #777; }
         .goal-box { background: var(--bg); padding: 15px; border-radius: 10px; margin-top: 20px; border: 1px solid var(--accent); }
         .progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
         .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.5s; }
-        
-        .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; justify-content: space-between; }
+        .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; justify-content: space-between; align-items: center; }
         button { cursor: pointer; background: var(--accent); border: none; padding: 5px 10px; border-radius: 5px; color: white; }
     </style>
 </head>
@@ -40,60 +33,98 @@
         <div class="label-small">Droga do 0.1 BTC</div>
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <div id="remainingText" style="font-weight:bold; font-size: 0.9em;">...</div>
-        <div id="targetDate" style="font-size: 0.85em; margin-top:5px; color:var(--accent);">Planowana data: ...</div>
+        <div id="targetDate" style="font-size: 0.8em; margin-top:5px; color:var(--accent);">Planowana data: ...</div>
     </div>
 
     <div class="history-grid">
-        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture">$0</span></div>
-        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture">$0</span></div>
-        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture">$0</span></div>
-        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture">$0</span></div>
+        <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span></div>
+        <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span></div>
+        <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span></div>
+        <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span></div>
     </div>
 
     <div style="margin-top:20px;">
         <label class="label-small">Obecne saldo (BTC):</label>
-        <input type="number" id="baseBtc" step="0.00000001" oninput="saveAndCalc()">
+        <input type="number" id="baseBtc" value="0.00000000" step="0.00000001" oninput="saveAndCalc()">
     </div>
 
     <div class="footer">
-        <span id="btcPriceLabel">Cena BTC: ...</span>
-        <button onclick="toggleTheme()">☀️/🌙</button>
+        <span id="btcPriceLabel">Cena BTC: Ładowanie...</span>
+        <button onclick="document.getElementById('body').classList.toggle('light')">☀️/🌙</button>
     </div>
 </div>
 
 <script>
-// Zmienne globalne na początku skryptu
-let btcPriceEur = 60000;
-let btcPriceUsd = 65000;
-let usdToPln = 4.0;
+    let btcPriceEur = 60000;
+    let btcPriceUsd = 65000;
+    let usdToPln = 4.0;
+    const EUR_PER_HOUR = 0.50;
+    const pageLoadTime = Date.now();
+    const TARGET_BTC = 0.1;
 
-// Funkcja tylko do pobierania danych (zmniejszamy częstotliwość!)
-async function refreshData() {
-    try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd');
-        const data = await res.json();
-        btcPriceEur = data.bitcoin.eur;
-        btcPriceUsd = data.bitcoin.usd;
-        
-        const curRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-        const curData = await curRes.json();
-        usdToPln = curData.rates.PLN;
-        
-        document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${btcPriceUsd.toLocaleString()}`;
-    } catch (e) {
-        console.error("Błąd sieci", e);
+    window.onload = () => {
+        const savedBtc = localStorage.getItem('userBaseBtc');
+        if (savedBtc) document.getElementById('baseBtc').value = savedBtc;
+        refreshData();
+        updateCalculations();
+    };
+
+    function saveAndCalc() {
+        localStorage.setItem('userBaseBtc', document.getElementById('baseBtc').value);
+        updateCalculations();
     }
-}
 
-// Główna funkcja obliczeniowa NIE powinna pobierać danych (tylko używać zmiennych)
-function updateCalculations() {
-    // ... tutaj Twoja logika obliczeń używająca już pobranych zmiennych btcPriceEur, etc. ...
-}
+    async function refreshData() {
+        try {
+            const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur,usd');
+            const data = await res.json();
+            btcPriceEur = data.bitcoin.eur;
+            btcPriceUsd = data.bitcoin.usd;
+            const curRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+            const curData = await curRes.json();
+            usdToPln = curData.rates.PLN;
+            document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${btcPriceUsd.toLocaleString()}`;
+        } catch (e) { console.error("Błąd API"); }
+    }
 
-// Inicjalizacja:
-refreshData(); // Pobierz raz na start
-setInterval(refreshData, 300000); // Pobieraj dane tylko raz na 5 minut (300 000 ms)
-setInterval(updateCalculations, 500); // Obliczaj płynnie co 0.5s
+    function updateCalculations() {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1))); startOfWeek.setHours(0,0,0,0);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const diff = (ms) => (Date.now() - ms) / (1000 * 60 * 60);
+
+        const sessionBtc = ((Date.now() - pageLoadTime) / 3600000) * (EUR_PER_HOUR / btcPriceEur);
+        const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
+        const totalBtc = baseBtc + sessionBtc;
+
+        // Cel i czas
+        const remainingBtc = Math.max(0, TARGET_BTC - totalBtc);
+        const remainingHours = (remainingBtc * btcPriceEur) / EUR_PER_HOUR;
+        const targetDate = new Date(Date.now() + remainingHours * 3600000);
+        
+        document.getElementById('remainingText').innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
+        document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
+        document.getElementById('progressFill').style.width = Math.min(100, (totalBtc / TARGET_BTC) * 100) + "%";
+
+        const updateField = (id, hours) => {
+            const sats = Math.floor((hours * EUR_PER_HOUR / btcPriceEur) * 100_000_000);
+            const valUsd = (sats / 100_000_000) * 1000000;
+            const valPln = valUsd * usdToPln;
+            document.getElementById(id).innerText = sats.toLocaleString();
+            document.getElementById(id.replace('Sats', 'Future')).innerHTML = `$${valUsd.toLocaleString(undefined, {maximumFractionDigits: 0})} <span class="pln-val">(${Math.floor(valPln).toLocaleString()} PLN)</span>`;
+        };
+
+        updateField('todaySats', diff(startOfToday));
+        updateField('weekSats', diff(startOfWeek));
+        updateField('monthSats', diff(startOfMonth));
+        updateField('yearSats', diff(startOfYear));
+        document.getElementById('sessionSats').innerText = Math.floor(sessionBtc * 100_000_000).toLocaleString();
+    }
+
+    setInterval(refreshData, 300000); // 5 minut
+    setInterval(updateCalculations, 500);
 </script>
 </body>
 </html>
