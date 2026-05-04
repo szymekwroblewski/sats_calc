@@ -22,6 +22,7 @@ body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--
 .history-value { display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 3px; }
 .future-val { font-size: 0.7em; color: var(--accent); display: block; }
 .pln-val { color: #777; font-size: 0.9em; }
+.moon-val { font-size: 0.7em; color: #aaa; display: block; margin-top: 2px; }
 
 .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
 .input-group { text-align: center; }
@@ -58,6 +59,7 @@ canvas { max-width: 100%; }
 <div class="label-small">Sats od wybranej daty</div>
 <div class="history-value" id="sinceDateSats">0</div>
 <div class="future-val" id="sinceDateFuture">...</div>
+<div class="moon-val" id="sinceDateMoon">przy 1M$/BTC: ...</div>
 </div>
 
 <div class="goal-box">
@@ -68,10 +70,10 @@ canvas { max-width: 100%; }
 </div>
 
 <div class="history-grid">
-<div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span></div>
-<div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span></div>
-<div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span></div>
-<div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span></div>
+<div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span><span class="moon-val" id="todayMoon"></span></div>
+<div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span><span class="moon-val" id="weekMoon"></span></div>
+<div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span><span class="moon-val" id="monthMoon"></span></div>
+<div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span><span class="moon-val" id="yearMoon"></span></div>
 </div>
 
 <div class="input-grid">
@@ -184,10 +186,14 @@ const updateField = (id, days) => {
 const sats = Math.floor(days * dailyBtc * 100_000_000);
 const usd = (sats / 100_000_000) * btcPriceUsd;
 const pln = usd * usdPln;
+const moonUsd = (sats / 100_000_000) * 1_000_000;
+const moonPln = moonUsd * usdPln;
 
 document.getElementById(id).innerText = sats.toLocaleString();
 document.getElementById(id.replace("Sats", "Future")).innerHTML =
 `$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
+document.getElementById(id.replace("Sats", "Moon")).innerText =
+`przy 1M$/BTC: $${moonUsd.toLocaleString(undefined,{maximumFractionDigits:2})} (${moonPln.toLocaleString(undefined,{maximumFractionDigits:2})} PLN)`;
 };
 
 updateField("todaySats", 1);
@@ -220,6 +226,11 @@ const pln = usd * usdPln;
 document.getElementById("sinceDateSats").innerText = sats.toLocaleString();
 document.getElementById("sinceDateFuture").innerHTML =
             `$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
+
+const moonUsd = (sats / 100_000_000) * 1_000_000;
+const moonPln = moonUsd * usdPln;
+document.getElementById("sinceDateMoon").innerText =
+`przy 1M$/BTC: $${moonUsd.toLocaleString(undefined,{maximumFractionDigits:2})} (${moonPln.toLocaleString(undefined,{maximumFractionDigits:2})} PLN)`;
 
 return { sats, start, now };
 }
