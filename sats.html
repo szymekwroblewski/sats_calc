@@ -30,7 +30,11 @@
         
         .btn-save { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: bold; }
         .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+
+        .chart-container { margin-top: 20px; }
+        canvas { max-width: 100%; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body id="body">
 
@@ -39,15 +43,14 @@
     <div class="main-counter" id="sessionSats">0</div>
     <div class="session-future" id="sessionFuture">...</div>
 
-    <!-- NOWA SEKCJA: DATA + GODZINA -->
     <div class="input-grid" style="margin-top:20px;">
         <div class="input-group">
             <span class="label-small">Start liczenia od (data)</span>
-            <input type="date" id="startDate" oninput="calcSinceDate()">
+            <input type="date" id="startDate" oninput="onStartChange()">
         </div>
         <div class="input-group">
             <span class="label-small">Start liczenia od (godzina)</span>
-            <input type="time" id="startTime" oninput="calcSinceDate()">
+            <input type="time" id="startTime" oninput="onStartChange()">
         </div>
     </div>
 
@@ -84,6 +87,11 @@
 
     <button class="btn-save" onclick="saveRecord()">ZAPISZ SNAPSHOT DO ARKUSZA</button>
 
+    <div class="chart-container">
+        <div class="label-small">Wzrost sats od daty startu</div>
+        <canvas id="satsChart" height="200"></canvas>
+    </div>
+
     <div class="footer">
         <span id="btcPriceLabel">Cena BTC: Ładowanie...</span>
         <span id="fxLabel">Kursy NBP: ...</span>
@@ -98,18 +106,22 @@
     let usdPln = 4.00;
 
     const pageLoadTime = Date.now();
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbycbjDYb4ja2PKpVtfiZQGd3g0cjuaTUm171LEJo0XlgEYrrXrTsa-WWYRJGV72bxR1/exec";
+    const WEB_APP_URL = "";
+
+    const LS_START_DATE = "dcaStartDate";
+    const LS_START_TIME = "dcaStartTime";
+    const LS_HISTORY = "dcaSatsHistory";
+
+    let satsChart = null;
+    let satsHistory = []; // { t: ISOString, sats: number }
 
     async function refreshFxRates() {
         try {
             const eur = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/EUR/?format=json");
             const usd = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/USD/?format=json");
 
-            const eurData = await eur.json();
-            const usdData = await usd.json();
-
-            eurPln = eurData.rates[0].mid;
-            usdPln = usdData.rates[0].mid;
+            eurPln = (await eur.json()).rates[0].mid;
+            usdPln = (await usd.json()).rates[0].mid;
 
             document.getElementById("fxLabel").innerText =
                 `Kursy NBP: EUR ${eurPln.toFixed(2)} PLN | USD ${usdPln.toFixed(2)} PLN`;
@@ -117,15 +129,14 @@
             updateCalculations();
             calcSinceDate();
         } catch (e) {
-            console.warn("NBP API niedostępne – używam ostatnich wartości");
+            console.warn("NBP API niedostępne");
         }
     }
 
     async function refreshData() {
         try {
             const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
-            const data = await res.json();
-            btcPriceUsd = parseFloat(data.price);
+            btcPriceUsd = parseFloat((await res.json()).price);
 
             document.getElementById("btcPriceLabel").innerText =
                 `Cena BTC: $${Math.floor(btcPriceUsd).toLocaleString()}`;
@@ -137,24 +148,28 @@
         }
     }
 
+    function getDailyBtc() {
+        const dailyEur = parseFloat(document.getElementById("dailyEur").value) || 0;
+        const eurUsd = eurPln / usdPln;
+        return (dailyEur * eurUsd) / btcPriceUsd;
+    }
+
     function updateCalculations() {
         const baseBtc = parseFloat(document.getElementById("baseBtc").value) || 0;
-        const dailyEur = parseFloat(document.getElementById("dailyEur").value) || 0;
+        const dailyBtc = getDailyBtc();
 
-        const eurUsd = eurPln / usdPln;
-        const dailyBtc = (dailyEur * eurUsd) / btcPriceUsd;
-
-        // Sesja
+        // SESJA
         const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
         const sSats = Math.floor(sessionBtc * 100_000_000);
-        const sUsd = (sSats / 100_000_000) * 1_000_000;
+
+        const sUsd = (sSats / 100_000_000) * btcPriceUsd;
         const sPln = sUsd * usdPln;
 
         document.getElementById("sessionSats").innerText = sSats.toLocaleString();
         document.getElementById("sessionFuture").innerHTML =
-            `$${Math.floor(sUsd).toLocaleString()} <span class="pln-val">(${Math.floor(sPln).toLocaleString()} PLN)</span>`;
+            `$${sUsd.toFixed(4)} <span class="pln-val">(${sPln.toFixed(4)} PLN)</span>`;
 
-        // Cel
+        // CEL
         const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
         const daysToGoal = remainingBtc / dailyBtc;
         const targetDate = new Date(Date.now() + daysToGoal * 86400000);
@@ -164,15 +179,15 @@
         document.getElementById("progressFill").style.width =
             Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
 
-        // Pola czasowe
+        // DZIŚ / TYDZIEŃ / MIESIĄC / ROK
         const updateField = (id, days) => {
             const sats = Math.floor(days * dailyBtc * 100_000_000);
-            const usd = (sats / 100_000_000) * 1_000_000;
+            const usd = (sats / 100_000_000) * btcPriceUsd;
             const pln = usd * usdPln;
 
             document.getElementById(id).innerText = sats.toLocaleString();
             document.getElementById(id.replace("Sats", "Future")).innerHTML =
-                `$${Math.floor(usd).toLocaleString()} <span class="pln-val">(${Math.floor(pln).toLocaleString()} PLN)</span>`;
+                `$${usd.toFixed(4)} <span class="pln-val">(${pln.toFixed(4)} PLN)</span>`;
         };
 
         updateField("todaySats", 1);
@@ -185,12 +200,13 @@
         const date = document.getElementById("startDate").value;
         const time = document.getElementById("startTime").value;
 
-        if (!date || !time) return;
+        if (!date || !time) {
+            document.getElementById("sinceDateSats").innerText = "0";
+            document.getElementById("sinceDateFuture").innerHTML = "...";
+            return;
+        }
 
-        const dailyEur = parseFloat(document.getElementById("dailyEur").value) || 0;
-        const eurUsd = eurPln / usdPln;
-        const dailyBtc = (dailyEur * eurUsd) / btcPriceUsd;
-
+        const dailyBtc = getDailyBtc();
         const start = new Date(`${date}T${time}:00`);
         const now = new Date();
 
@@ -198,30 +214,119 @@
         if (diffDays < 0) return;
 
         const sats = Math.floor(diffDays * dailyBtc * 100_000_000);
-        const usd = (sats / 100_000_000) * 1_000_000;
+        const usd = (sats / 100_000_000) * btcPriceUsd;
         const pln = usd * usdPln;
 
         document.getElementById("sinceDateSats").innerText = sats.toLocaleString();
         document.getElementById("sinceDateFuture").innerHTML =
-            `$${Math.floor(usd).toLocaleString()} <span class="pln-val">(${Math.floor(pln).toLocaleString()} PLN)</span>`;
+            `$${usd.toFixed(4)} <span class="pln-val">(${pln.toFixed(4)} PLN)</span>`;
+
+        return { sats, start, now };
     }
 
-    async function saveRecord() {
-        const data = {
-            price: document.getElementById("btcPriceLabel").innerText,
-            targetDate: document.getElementById("targetDate").innerText
-        };
+    function onStartChange() {
+        const date = document.getElementById("startDate").value;
+        const time = document.getElementById("startTime").value;
 
-        try {
-            await fetch(WEB_APP_URL, {
-                method: "POST",
-                mode: "no-cors",
-                body: JSON.stringify(data)
-            });
-            alert("Zapisano!");
-        } catch (e) {
-            alert("Błąd");
+        if (date && time) {
+            localStorage.setItem(LS_START_DATE, date);
+            localStorage.setItem(LS_START_TIME, time);
+            // reset historii przy zmianie startu
+            satsHistory = [];
+            localStorage.removeItem(LS_HISTORY);
+            updateChart();
         }
+
+        calcSinceDate();
+    }
+
+    function initStartFromLocalStorage() {
+        const savedDate = localStorage.getItem(LS_START_DATE);
+        const savedTime = localStorage.getItem(LS_START_TIME);
+
+        if (savedDate) document.getElementById("startDate").value = savedDate;
+        if (savedTime) document.getElementById("startTime").value = savedTime;
+    }
+
+    function initHistoryFromLocalStorage() {
+        const raw = localStorage.getItem(LS_HISTORY);
+        if (!raw) {
+            satsHistory = [];
+            return;
+        }
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                satsHistory = parsed;
+            } else {
+                satsHistory = [];
+            }
+        } catch {
+            satsHistory = [];
+        }
+    }
+
+    function initChart() {
+        const ctx = document.getElementById("satsChart").getContext("2d");
+        satsChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: satsHistory.map(p => new Date(p.t).toLocaleString()),
+                datasets: [{
+                    label: "Sats (narastająco)",
+                    data: satsHistory.map(p => p.sats),
+                    borderColor: "#f7931a",
+                    backgroundColor: "rgba(247,147,26,0.15)",
+                    tension: 0.2,
+                    pointRadius: 0,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        ticks: { maxTicksLimit: 6 }
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function updateChart() {
+        if (!satsChart) return;
+        satsChart.data.labels = satsHistory.map(p => new Date(p.t).toLocaleString());
+        satsChart.data.datasets[0].data = satsHistory.map(p => p.sats);
+        satsChart.update();
+    }
+
+    function logSatsPoint() {
+        const date = document.getElementById("startDate").value;
+        const time = document.getElementById("startTime").value;
+        if (!date || !time) return;
+
+        const result = calcSinceDate();
+        if (!result) return;
+
+        const now = new Date();
+        const sats = result.sats;
+
+        satsHistory.push({ t: now.toISOString(), sats });
+        // opcjonalnie ogranicz liczbę punktów, np. do 1000
+        if (satsHistory.length > 1000) satsHistory.shift();
+
+        localStorage.setItem(LS_HISTORY, JSON.stringify(satsHistory));
+        updateChart();
+    }
+
+    function saveRecord() {
+        // tu możesz dopisać integrację z arkuszem, jeśli chcesz
     }
 
     function saveAndCalc() {
@@ -229,6 +334,9 @@
         calcSinceDate();
     }
 
+    // start
+    initStartFromLocalStorage();
+    initHistoryFromLocalStorage();
     refreshFxRates();
     refreshData();
 
@@ -237,6 +345,17 @@
 
     setInterval(updateCalculations, 1000);
     setInterval(calcSinceDate, 1000);
+
+    // logowanie punktu co 10 minut
+    setInterval(logSatsPoint, 600000);
+
+    // inicjalizacja wykresu po załadowaniu DOM
+    window.addEventListener("load", () => {
+        initChart();
+        updateChart();
+        calcSinceDate();
+        updateCalculations();
+    });
 </script>
 </body>
 </html>
