@@ -219,7 +219,7 @@
 
         document.getElementById("sinceDateSats").innerText = sats.toLocaleString();
         document.getElementById("sinceDateFuture").innerHTML =
-            `$${usd.toFixed(4)} <span class="pln-val">(${pln.toFixed(4)} PLN)</span>`;
+            `$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
 
         return { sats, start, now };
     }
