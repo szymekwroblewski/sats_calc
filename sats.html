@@ -1,123 +1,161 @@
-```html
 <!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<title>Sats Accumulator Pro</title>
-
+<title>BTC Dashboard</title>
 <style>
-:root { --bg:#121212; --card:#1e1e1e; --text:#e0e0e0; --accent:#f7931a; --border:#333; }
-body { font-family:'Segoe UI'; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:20px; }
-.card { background:var(--card); padding:20px; border-radius:15px; max-width:500px; width:100%; }
+    body {
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        background: #f5f5f5;
+        margin: 0;
+        padding: 20px;
+        color: #222;
+    }
 
-.main-counter { font-size:3em; color:var(--accent); text-align:center; }
-.future-val { font-size:0.75em; color:var(--accent); }
-.pln-val { color:#777; }
+    .card {
+        background: white;
+        padding: 18px 22px;
+        margin-bottom: 18px;
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    }
 
-input { width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); text-align:center; }
+    .label {
+        font-size: 14px;
+        opacity: 0.65;
+        margin-bottom: 6px;
+    }
 
-.history-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px; }
-.history-item { background:#181818; padding:10px; border-radius:8px; text-align:center; }
+    .value {
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
 
-.footer { margin-top:20px; text-align:center; font-size:0.8em; color:#888; }
+    .subvalue {
+        font-size: 16px;
+        opacity: 0.8;
+        margin-bottom: 6px;
+    }
+
+    .alt {
+        font-size: 14px;
+        opacity: 0.65;
+        margin-top: 4px;
+    }
+
+    .progress {
+        height: 14px;
+        background: #ddd;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+
+    .progress-inner {
+        height: 100%;
+        background: #ff8c00;
+        width: 0%;
+    }
 </style>
 </head>
-
 <body>
-<div class="card">
 
-<div class="main-counter" id="sessionSats">0</div>
-<div id="sessionFuture">...</div>
-
-<input type="number" id="baseBtc" value="0.05" step="0.00000001">
-<input type="number" id="dailyEur" value="12">
-
-<div class="history-grid">
-<div class="history-item"><div>Dziś</div><div id="todaySats">0</div><div id="todayFuture"></div></div>
-<div class="history-item"><div>Tydzień</div><div id="weekSats">0</div><div id="weekFuture"></div></div>
-<div class="history-item"><div>Miesiąc</div><div id="monthSats">0</div><div id="monthFuture"></div></div>
-<div class="history-item"><div>Rok</div><div id="yearSats">0</div><div id="yearFuture"></div></div>
-</div>
-
-<div style="margin-top:20px;">
-<div>Sats od daty</div>
-<div id="sinceDateSats">0</div>
-<div id="sinceDateFuture"></div>
-</div>
-
-<div class="footer" id="btcPriceLabel">Ładowanie ceny BTC...</div>
-
-</div>
+<div id="app"></div>
 
 <script>
-let btcPriceUsd = 65000;
-let usdPln = 4.0;
-let eurPln = 4.3;
+// ------------------------------
+// KONFIGURACJA
+// ------------------------------
+const usdPln = 3.63; // kurs USD → PLN
+const goalBtc = 0.1;
 
-const FUTURE_BTC_PRICE = 1000000;
-const pageLoadTime = Date.now();
+// Twoje dane (przykładowe z obrazka)
+const data = {
+    session: 368,
+    today: 17813,
+    week: 124694,
+    month: 534405,
+    year: 6501927,
+    fromDate: 63194
+};
 
-async function refreshData(){
-    const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
-    btcPriceUsd = parseFloat((await res.json()).price);
-
-    document.getElementById("btcPriceLabel").innerText =
-        "BTC: $" + Math.floor(btcPriceUsd).toLocaleString();
-
-    update();
+// ------------------------------
+// FUNKCJE POMOCNICZE
+// ------------------------------
+function satsToRealUSD(sats, btcPrice) {
+    return (sats / 100000000) * btcPrice;
 }
 
-function getDailyBtc(){
-    const eur = parseFloat(document.getElementById("dailyEur").value)||0;
-    const eurUsd = eurPln/usdPln;
-    return (eur * eurUsd) / btcPriceUsd;
+function satsToRealPLN(sats, btcPrice) {
+    return satsToRealUSD(sats, btcPrice) * usdPln;
 }
 
-function formatBlock(sats){
-    const btc = sats / 100000000;
+function satsTo1M_USD(sats) {
+    return sats * 0.01; // 1 sat = 0.01 USD przy BTC = 1M
+}
 
-    const usd = btc * btcPriceUsd;
-    const pln = usd * usdPln;
+function satsTo1M_PLN(sats) {
+    return satsTo1M_USD(sats) * usdPln;
+}
 
-    const futureUsd = btc * FUTURE_BTC_PRICE;
-    const futurePln = futureUsd * usdPln;
+function format(n) {
+    return n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ------------------------------
+// RENDER KARTY
+// ------------------------------
+function renderCard(title, sats, btcPrice) {
+    const realUSD = satsToRealUSD(sats, btcPrice);
+    const realPLN = satsToRealPLN(sats, btcPrice);
+
+    const usd1m = satsTo1M_USD(sats);
+    const pln1m = satsTo1M_PLN(sats);
 
     return `
-    $${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span><br>
-    <span class="future-val">🚀 $${futureUsd.toFixed(2)} (${futurePln.toFixed(2)} PLN @ $1M)</span>
+        <div class="card">
+            <div class="label">${title}</div>
+            <div class="value">${sats.toLocaleString("pl-PL")}</div>
+            <div class="subvalue">$${format(realUSD)} (${format(realPLN)} PLN)</div>
+
+            <div class="alt">
+                Gdyby BTC = 1 000 000 USD:<br>
+                $${format(usd1m)} (${format(pln1m)} PLN)
+            </div>
+        </div>
     `;
 }
 
-function update(){
-    const dailyBtc = getDailyBtc();
+// ------------------------------
+// RENDER CAŁEGO DASHBOARDU
+// ------------------------------
+function renderDashboard() {
+    const btcPrice = 78000; // ← tu wstawiasz aktualną cenę BTC
 
-    const sessionBtc = ((Date.now()-pageLoadTime)/86400000)*dailyBtc;
-    const sessionSats = Math.floor(sessionBtc*100000000);
+    const totalSats = data.year; // do progress bara
+    const currentBtc = totalSats / 100000000;
+    const progress = (currentBtc / goalBtc) * 100;
 
-    document.getElementById("sessionSats").innerText = sessionSats.toLocaleString();
-    document.getElementById("sessionFuture").innerHTML = formatBlock(sessionSats);
+    document.getElementById("app").innerHTML = `
+        ${renderCard("SATS KUPIONE W TEJ SESJI", data.session, btcPrice)}
+        ${renderCard("DZIŚ", data.today, btcPrice)}
+        ${renderCard("TYDZIEŃ", data.week, btcPrice)}
+        ${renderCard("MIESIĄC", data.month, btcPrice)}
+        ${renderCard("ROK", data.year, btcPrice)}
+        ${renderCard("OD WYBRANEJ DATY", data.fromDate, btcPrice)}
 
-    const updateField = (id, days)=>{
-        const sats = Math.floor(days*dailyBtc*100000000);
-        document.getElementById(id).innerText = sats.toLocaleString();
-        document.getElementById(id.replace("Sats","Future")).innerHTML = formatBlock(sats);
-    }
-
-    updateField("todaySats",1);
-    updateField("weekSats",7);
-    updateField("monthSats",30);
-    updateField("yearSats",365);
-
-    const sats = sessionSats;
-    document.getElementById("sinceDateSats").innerText = sats.toLocaleString();
-    document.getElementById("sinceDateFuture").innerHTML = formatBlock(sats);
+        <div class="card">
+            <div class="label">DROGA DO 0.1 BTC</div>
+            <div class="subvalue">Brakuje: ${(goalBtc - currentBtc).toFixed(6)} BTC</div>
+            <div class="progress">
+                <div class="progress-inner" style="width:${progress}%"></div>
+            </div>
+        </div>
+    `;
 }
 
-setInterval(update,1000);
-setInterval(refreshData,300000);
-
-refreshData();
-update();
+renderDashboard();
 </script>
 
 </body>
