@@ -167,7 +167,7 @@
 
         document.getElementById("sessionSats").innerText = sSats.toLocaleString();
         document.getElementById("sessionFuture").innerHTML =
-            `$${sUsd.toFixed(4)} <span class="pln-val">(${sPln.toFixed(4)} PLN)</span>`;
+            `$${sUsd.toFixed(2)} <span class="pln-val">(${sPln.toFixed(2)} PLN)</span>`;
 
         // CEL
         const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
@@ -187,7 +187,7 @@
 
             document.getElementById(id).innerText = sats.toLocaleString();
             document.getElementById(id.replace("Sats", "Future")).innerHTML =
-                `$${usd.toFixed(4)} <span class="pln-val">(${pln.toFixed(4)} PLN)</span>`;
+                `$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
         };
 
         updateField("todaySats", 1);
