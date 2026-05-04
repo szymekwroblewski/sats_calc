@@ -29,7 +29,7 @@
         input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; font-size: 1em; box-sizing: border-box; }
         
         .btn-save { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: bold; }
-        .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; justify-content: space-between; align-items: center; }
+        .footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 5px; }
     </style>
 </head>
 <body id="body">
@@ -86,6 +86,7 @@
 
     <div class="footer">
         <span id="btcPriceLabel">Cena BTC: Ładowanie...</span>
+        <span id="fxLabel">Kursy NBP: ...</span>
         <button onclick="document.getElementById('body').classList.toggle('light')">☀️ 🌙</button>
     </div>
 </div>
@@ -93,66 +94,102 @@
 <script>
     const TARGET_BTC = 0.1;
     let btcPriceUsd = 65000;
+    let eurPln = 4.30;
+    let usdPln = 4.00;
+
     const pageLoadTime = Date.now();
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbycbjDYb4ja2PKpVtfiZQGd3g0cjuaTUm171LEJo0XlgEYrrXrTsa-WWYRJGV72bxR1/exec';
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbycbjDYb4ja2PKpVtfiZQGd3g0cjuaTUm171LEJo0XlgEYrrXrTsa-WWYRJGV72bxR1/exec";
+
+    async function refreshFxRates() {
+        try {
+            const eur = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/EUR/?format=json");
+            const usd = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/USD/?format=json");
+
+            const eurData = await eur.json();
+            const usdData = await usd.json();
+
+            eurPln = eurData.rates[0].mid;
+            usdPln = usdData.rates[0].mid;
+
+            document.getElementById("fxLabel").innerText =
+                `Kursy NBP: EUR ${eurPln.toFixed(2)} PLN | USD ${usdPln.toFixed(2)} PLN`;
+
+            updateCalculations();
+            calcSinceDate();
+        } catch (e) {
+            console.warn("NBP API niedostępne – używam ostatnich wartości");
+        }
+    }
 
     async function refreshData() {
         try {
-            const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+            const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
             const data = await res.json();
             btcPriceUsd = parseFloat(data.price);
-            document.getElementById('btcPriceLabel').innerText = `Cena BTC: $${Math.floor(btcPriceUsd).toLocaleString()}`;
+
+            document.getElementById("btcPriceLabel").innerText =
+                `Cena BTC: $${Math.floor(btcPriceUsd).toLocaleString()}`;
+
             updateCalculations();
             calcSinceDate();
-        } catch (e) { console.error("Błąd API"); }
+        } catch (e) {
+            console.error("Błąd API BTC");
+        }
     }
 
     function updateCalculations() {
-        const baseBtc = parseFloat(document.getElementById('baseBtc').value) || 0;
-        const dailyEur = parseFloat(document.getElementById('dailyEur').value) || 0;
-        const dailyBtc = (dailyEur * 1.08) / btcPriceUsd;
+        const baseBtc = parseFloat(document.getElementById("baseBtc").value) || 0;
+        const dailyEur = parseFloat(document.getElementById("dailyEur").value) || 0;
+
+        const eurUsd = eurPln / usdPln;
+        const dailyBtc = (dailyEur * eurUsd) / btcPriceUsd;
 
         // Sesja
         const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
         const sSats = Math.floor(sessionBtc * 100_000_000);
-        document.getElementById('sessionSats').innerText = sSats.toLocaleString();
         const sUsd = (sSats / 100_000_000) * 1_000_000;
-        document.getElementById('sessionFuture').innerHTML = `$${Math.floor(sUsd).toLocaleString()} <span class="pln-val">(${(sUsd * 4.0).toLocaleString()} PLN)</span>`;
+        const sPln = sUsd * usdPln;
+
+        document.getElementById("sessionSats").innerText = sSats.toLocaleString();
+        document.getElementById("sessionFuture").innerHTML =
+            `$${Math.floor(sUsd).toLocaleString()} <span class="pln-val">(${Math.floor(sPln).toLocaleString()} PLN)</span>`;
 
         // Cel
         const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
         const daysToGoal = remainingBtc / dailyBtc;
         const targetDate = new Date(Date.now() + daysToGoal * 86400000);
-        
-        document.getElementById('remainingText').innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
-        document.getElementById('targetDate').innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
-        document.getElementById('progressFill').style.width = Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
+
+        document.getElementById("remainingText").innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
+        document.getElementById("targetDate").innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
+        document.getElementById("progressFill").style.width =
+            Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
 
         // Pola czasowe
         const updateField = (id, days) => {
             const sats = Math.floor(days * dailyBtc * 100_000_000);
-            const valUsd = (sats / 100_000_000) * 1_000_000;
-            const valPln = valUsd * 4.0;
+            const usd = (sats / 100_000_000) * 1_000_000;
+            const pln = usd * usdPln;
+
             document.getElementById(id).innerText = sats.toLocaleString();
-            document.getElementById(id.replace('Sats', 'Future')).innerHTML = 
-                `$${Math.floor(valUsd).toLocaleString()} <span class="pln-val">(${Math.floor(valPln).toLocaleString()} PLN)</span>`;
+            document.getElementById(id.replace("Sats", "Future")).innerHTML =
+                `$${Math.floor(usd).toLocaleString()} <span class="pln-val">(${Math.floor(pln).toLocaleString()} PLN)</span>`;
         };
 
-        updateField('todaySats', 1);
-        updateField('weekSats', 7);
-        updateField('monthSats', 30);
-        updateField('yearSats', 365);
+        updateField("todaySats", 1);
+        updateField("weekSats", 7);
+        updateField("monthSats", 30);
+        updateField("yearSats", 365);
     }
 
-    // NOWA FUNKCJA — LICZENIE OD WYBRANEJ DATY
     function calcSinceDate() {
-        const date = document.getElementById('startDate').value;
-        const time = document.getElementById('startTime').value;
+        const date = document.getElementById("startDate").value;
+        const time = document.getElementById("startTime").value;
 
         if (!date || !time) return;
 
-        const dailyEur = parseFloat(document.getElementById('dailyEur').value) || 0;
-        const dailyBtc = (dailyEur * 1.08) / btcPriceUsd;
+        const dailyEur = parseFloat(document.getElementById("dailyEur").value) || 0;
+        const eurUsd = eurPln / usdPln;
+        const dailyBtc = (dailyEur * eurUsd) / btcPriceUsd;
 
         const start = new Date(`${date}T${time}:00`);
         const now = new Date();
@@ -162,23 +199,42 @@
 
         const sats = Math.floor(diffDays * dailyBtc * 100_000_000);
         const usd = (sats / 100_000_000) * 1_000_000;
-        const pln = usd * 4.0;
+        const pln = usd * usdPln;
 
-        document.getElementById('sinceDateSats').innerText = sats.toLocaleString();
-        document.getElementById('sinceDateFuture').innerHTML =
+        document.getElementById("sinceDateSats").innerText = sats.toLocaleString();
+        document.getElementById("sinceDateFuture").innerHTML =
             `$${Math.floor(usd).toLocaleString()} <span class="pln-val">(${Math.floor(pln).toLocaleString()} PLN)</span>`;
     }
 
     async function saveRecord() {
-        const data = { price: document.getElementById('btcPriceLabel').innerText, targetDate: document.getElementById('targetDate').innerText };
-        try { await fetch(WEB_APP_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(data) }); alert('Zapisano!'); } 
-        catch (e) { alert('Błąd'); }
+        const data = {
+            price: document.getElementById("btcPriceLabel").innerText,
+            targetDate: document.getElementById("targetDate").innerText
+        };
+
+        try {
+            await fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                body: JSON.stringify(data)
+            });
+            alert("Zapisano!");
+        } catch (e) {
+            alert("Błąd");
+        }
     }
 
-    function saveAndCalc() { updateCalculations(); calcSinceDate(); }
+    function saveAndCalc() {
+        updateCalculations();
+        calcSinceDate();
+    }
 
+    refreshFxRates();
     refreshData();
+
+    setInterval(refreshFxRates, 300000);
     setInterval(refreshData, 300000);
+
     setInterval(updateCalculations, 1000);
     setInterval(calcSinceDate, 1000);
 </script>
