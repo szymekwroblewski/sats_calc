@@ -517,6 +517,7 @@ input[type=password], input[type=text] {
     <div class="header-label">Sats kupione w tej sesji</div>
     <div class="main-counter" id="sessionSats">0</div>
     <div class="session-future" id="sessionFuture">$0.00 <span class="pln-val">(0.00 PLN)</span></div>
+    <div class="moon-val" id="sessionMoon" style="text-align:center; margin-bottom:12px;"></div>
 
     <div class="section-divider">licznik od daty</div>
 
@@ -754,8 +755,11 @@ function updateCalculations() {
   const sSats = Math.floor(sessionBtc * 100_000_000);
   const sUsd = (sSats / 100_000_000) * btcPriceUsd;
   const sPln = sUsd * usdPln;
+  const sMoonUsd = (sSats / 100_000_000) * 1_000_000;
+  const sMoonPln = sMoonUsd * usdPln;
   document.getElementById("sessionSats").innerText = sSats.toLocaleString();
   document.getElementById("sessionFuture").innerHTML = `$${sUsd.toFixed(2)} <span class="pln-val">(${sPln.toFixed(2)} PLN)</span>`;
+  document.getElementById("sessionMoon").innerText = `przy 1M$/BTC: $${sMoonUsd.toLocaleString(undefined,{maximumFractionDigits:2})} (${sMoonPln.toLocaleString(undefined,{maximumFractionDigits:2})} PLN)`;
 
   const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
   const daysToGoal = dailyBtc > 0 ? remainingBtc / dailyBtc : 0;
