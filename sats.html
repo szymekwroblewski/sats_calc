@@ -2,350 +2,1045 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<title>Sats Accumulator Pro</title>
-<style>
-:root { --bg: #121212; --card: #1e1e1e; --text: #e0e0e0; --accent: #f7931a; --border: #333; }
-body.light { --bg: #f4f4f9; --card: #ffffff; --text: #333; --border: #ddd; }
-body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; transition: 0.3s; margin: 0; display: flex; justify-content: center; }
-.card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-width: 500px; width: 100%; border: 1px solid var(--border); }
-
-.header-label { font-size: 0.7em; color: #888; text-transform: uppercase; text-align: center; margin-bottom: 5px; }
-.main-counter { font-size: 3em; font-weight: bold; color: var(--accent); text-align: center; margin: 5px 0; }
-.session-future { text-align: center; font-size: 0.85em; color: #777; margin-bottom: 20px; }
-
-.goal-box { background: var(--bg); padding: 15px; border-radius: 10px; border: 1px solid var(--accent); margin-bottom: 20px; text-align: center; }
-.progress-bar { background: #444; height: 10px; border-radius: 5px; margin: 10px 0; overflow: hidden; }
-.progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.5s; }
-
-.history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-.history-item { background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
-.history-value { display: block; font-weight: bold; font-size: 0.9em; margin-bottom: 3px; }
-.future-val { font-size: 0.7em; color: var(--accent); display: block; }
-.pln-val { color: #777; font-size: 0.9em; }
-.moon-val { font-size: 0.7em; color: #aaa; display: block; margin-top: 2px; }
-
-.input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-.input-group { text-align: center; }
-.label-small { font-size: 0.65em; color: #888; text-transform: uppercase; margin-bottom: 5px; display: block; }
-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; font-size: 1em; box-sizing: border-box; }
-
-.btn-save { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 8px; margin-top: 15px; cursor: pointer; font-weight: bold; }
-.footer { font-size: 0.8em; margin-top: 20px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-
-.chart-container { margin-top: 20px; }
-canvas { max-width: 100%; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto Suite</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --card: #16161f;
+  --card2: #1c1c28;
+  --text: #e8e8f0;
+  --muted: #7070a0;
+  --border: #2a2a3a;
+  --accent: #f7931a;
+  --accent-dim: rgba(247,147,26,0.12);
+  --accent-glow: rgba(247,147,26,0.35);
+  --blue: #4f8ef7;
+  --blue-dim: rgba(79,142,247,0.12);
+  --blue-glow: rgba(79,142,247,0.3);
+  --danger: #ef4444;
+  --green: #22c55e;
+}
+body.light {
+  --bg: #f0f0f7;
+  --surface: #e8e8f4;
+  --card: #ffffff;
+  --card2: #f5f5fc;
+  --text: #1a1a2e;
+  --muted: #6060a0;
+  --border: #d0d0e8;
+  --accent: #e8820a;
+  --accent-dim: rgba(232,130,10,0.1);
+  --accent-glow: rgba(232,130,10,0.25);
+  --blue: #2563eb;
+  --blue-dim: rgba(37,99,235,0.1);
+  --blue-glow: rgba(37,99,235,0.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ── NOISE TEXTURE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ── TOP NAV ── */
+.top-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,10,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 56px;
+  transition: background 0.3s;
+}
+body.light .top-nav { background: rgba(240,240,247,0.9); }
+
+.nav-brand {
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  margin-right: 32px;
+  white-space: nowrap;
+}
+.nav-brand span { color: var(--muted); font-weight: 400; }
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-tab {
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.nav-tab:hover { color: var(--text); background: var(--card2); }
+.nav-tab.active {
+  background: var(--accent-dim);
+  border-color: rgba(247,147,26,0.3);
+  color: var(--accent);
+}
+.nav-tab.active.blue-tab {
+  background: var(--blue-dim);
+  border-color: rgba(79,142,247,0.3);
+  color: var(--blue);
+}
+
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.2s;
+}
+.theme-btn:hover { background: var(--card2); color: var(--text); border-color: var(--accent); }
+
+/* ── PAGE VIEWS ── */
+.page { display: none; padding: 28px 20px 60px; position: relative; z-index: 1; }
+.page.active { display: block; }
+
+/* ── MAX WIDTH WRAPPERS ── */
+.sats-wrap { max-width: 520px; margin: 0 auto; }
+.szyfr-wrap { max-width: 800px; margin: 0 auto; }
+
+/* ── SHARED CARD ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  transition: background 0.3s, border-color 0.3s;
+}
+.card + .card { margin-top: 16px; }
+
+/* ── SATS PAGE ── */
+.header-label {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.main-counter {
+  font-family: 'Space Mono', monospace;
+  font-size: 3.2em;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+  line-height: 1;
+  margin-bottom: 6px;
+  text-shadow: 0 0 40px var(--accent-glow);
+}
+.session-future {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.pln-val { color: var(--muted); opacity: 0.7; }
+
+.goal-box {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.goal-box .label-small { margin-bottom: 6px; }
+
+.progress-bar {
+  background: var(--border);
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 10px 0;
+}
+.progress-fill {
+  background: linear-gradient(90deg, var(--accent), #ffb347);
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(.4,0,.2,1);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.history-item {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.history-item:hover { border-color: rgba(247,147,26,0.3); }
+
+.history-value {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+.future-val { font-size: 11px; color: var(--accent); display: block; }
+.moon-val { font-size: 10px; color: var(--muted); display: block; margin-top: 3px; }
+
+.input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.input-group { text-align: center; }
+.label-small {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+}
+
+input[type=number], input[type=date], input[type=time], input[type=password], input[type=text] {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.3s;
+  -webkit-appearance: none;
+}
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.btn-save {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent), #ffb347);
+  color: #0a0a0f;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  margin-bottom: 16px;
+}
+.btn-save:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.sats-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  padding-top: 4px;
+}
+
+.chart-container { margin-top: 8px; }
+
+/* ── SZYFR PAGE ── */
+.szyfr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+.szyfr-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.szyfr-subtitle { font-size: 12px; color: var(--muted); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--blue-dim);
+  border: 1px solid rgba(79,142,247,0.2);
+  color: var(--blue);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.pill span { opacity: 0.7; font-size: 10px; }
+
+.inner-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.inner-tab-btn {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.inner-tab-btn:hover { background: var(--card2); color: var(--text); }
+.inner-tab-btn.active {
+  background: var(--blue-dim);
+  border-color: rgba(79,142,247,0.3);
+  color: var(--blue);
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+label {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+}
+
+textarea {
+  width: 100%;
+  height: 130px;
+  font-family: 'Space Mono', monospace;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+  font-size: 12px;
+  transition: border-color 0.2s, background 0.3s;
+  margin-bottom: 10px;
+}
+textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-dim);
+}
+
+input[type=password], input[type=text] {
+  text-align: left;
+  width: 260px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.spacer { flex: 1; }
+
+/* Buttons for szyfr */
+.szyfr-wrap button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--blue);
+  color: white;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s;
+  box-shadow: 0 4px 16px var(--blue-glow);
+}
+.szyfr-wrap button:hover { opacity: 0.85; transform: translateY(-1px); }
+.szyfr-wrap button.secondary {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: none;
+}
+.szyfr-wrap button.secondary:hover {
+  background: var(--card2);
+  border-color: var(--blue);
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+.szyfr-wrap button.danger {
+  background: var(--danger);
+  box-shadow: 0 4px 16px rgba(239,68,68,0.25);
+  color: white;
+  border-color: transparent;
+}
+.szyfr-wrap button.danger:hover { opacity: 0.85; }
+
+.szyfr-footer {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+/* ── SECTION DIVIDER ── */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.section-divider::before, .section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page.active .card { animation: fadeUp 0.3s ease both; }
+.page.active .card:nth-child(2) { animation-delay: 0.05s; }
+.page.active .card:nth-child(3) { animation-delay: 0.1s; }
+.page.active .card:nth-child(4) { animation-delay: 0.15s; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 500px) {
+  .top-nav { padding: 0 12px; gap: 6px; }
+  .nav-brand { font-size: 12px; margin-right: 12px; }
+  .nav-tab { padding: 6px 10px; font-size: 11px; }
+  .page { padding: 16px 12px 48px; }
+  .main-counter { font-size: 2.4em; }
+  input[type=password], input[type=text] { width: 100%; }
+}
+</style>
 </head>
 <body id="body">
 
-<div class="card">
-<div class="header-label">Sats kupione w tej sesji</div>
-<div class="main-counter" id="sessionSats">0</div>
-<div class="session-future" id="sessionFuture">...</div>
+<!-- ═══════════════ TOP NAVIGATION ═══════════════ -->
+<nav class="top-nav">
+  <div class="nav-brand">₿ <span>Crypto</span>Suite</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="navSats" onclick="switchPage('sats')">
+      ⚡ Sats Accumulator
+    </button>
+    <button class="nav-tab blue-tab" id="navSzyfr" onclick="switchPage('szyfr')">
+      🔐 Szyfrator
+    </button>
+  </div>
+  <div class="nav-right">
+    <button class="theme-btn" id="themeToggle">☀️ Jasny</button>
+  </div>
+</nav>
 
-<div class="input-grid" style="margin-top:20px;">
-<div class="input-group">
-<span class="label-small">Start liczenia od (data)</span>
-<input type="date" id="startDate" oninput="onStartChange()">
-</div>
-<div class="input-group">
-<span class="label-small">Start liczenia od (godzina)</span>
-<input type="time" id="startTime" oninput="onStartChange()">
+<!-- ═══════════════ PAGE: SATS ACCUMULATOR ═══════════════ -->
+<div class="page active" id="page-sats">
+<div class="sats-wrap">
+
+  <div class="card">
+    <div class="header-label">Sats kupione w tej sesji</div>
+    <div class="main-counter" id="sessionSats">0</div>
+    <div class="session-future" id="sessionFuture">$0.00 <span class="pln-val">(0.00 PLN)</span></div>
+
+    <div class="section-divider">licznik od daty</div>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <span class="label-small">Start (data)</span>
+        <input type="date" id="startDate" oninput="onStartChange()">
+      </div>
+      <div class="input-group">
+        <span class="label-small">Start (godzina)</span>
+        <input type="time" id="startTime" oninput="onStartChange()">
+      </div>
+    </div>
+
+    <div class="goal-box">
+      <div class="label-small">Sats od wybranej daty</div>
+      <div class="history-value" id="sinceDateSats" style="font-size:22px; color:var(--accent);">—</div>
+      <div class="future-val" id="sinceDateFuture">...</div>
+      <div class="moon-val" id="sinceDateMoon"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="goal-box" style="margin-bottom:0;">
+      <div class="label-small">Droga do 0.1 BTC</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div id="remainingText" style="font-weight:600; font-size:14px;">Brakuje: — BTC</div>
+      <div id="targetDate" style="font-size:12px; margin-top:5px; color:var(--accent);"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="history-grid">
+      <div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">—</span><span class="future-val" id="todayFuture">...</span><span class="moon-val" id="todayMoon"></span></div>
+      <div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">—</span><span class="future-val" id="weekFuture">...</span><span class="moon-val" id="weekMoon"></span></div>
+      <div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">—</span><span class="future-val" id="monthFuture">...</span><span class="moon-val" id="monthMoon"></span></div>
+      <div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">—</span><span class="future-val" id="yearFuture">...</span><span class="moon-val" id="yearMoon"></span></div>
+    </div>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <span class="label-small">Saldo (BTC)</span>
+        <input type="number" id="baseBtc" value="0.052" step="0.00000001" oninput="saveAndCalc()">
+      </div>
+      <div class="input-group">
+        <span class="label-small">Kupuję/doba (EUR)</span>
+        <input type="number" id="dailyEur" value="12" step="1" oninput="saveAndCalc()">
+      </div>
+    </div>
+
+    <button class="btn-save" onclick="saveRecord()">ZAPISZ SNAPSHOT DO ARKUSZA</button>
+
+    <div class="chart-container">
+      <div class="label-small">Wzrost sats od daty startu</div>
+      <canvas id="satsChart"></canvas>
+    </div>
+
+    <div class="sats-footer">
+      <span id="btcPriceLabel">Cena BTC: ładowanie...</span>
+      <span id="fxLabel">Kursy NBP: ładowanie...</span>
+    </div>
+  </div>
+
 </div>
 </div>
 
-<div class="goal-box" style="margin-top:15px;">
-<div class="label-small">Sats od wybranej daty</div>
-<div class="history-value" id="sinceDateSats">0</div>
-<div class="future-val" id="sinceDateFuture">...</div>
-<div class="moon-val" id="sinceDateMoon">przy 1M$/BTC: ...</div>
-</div>
+<!-- ═══════════════ PAGE: SZYFRATOR ═══════════════ -->
+<div class="page" id="page-szyfr">
+<div class="szyfr-wrap">
 
-<div class="goal-box">
-<div class="label-small">Droga do 0.1 BTC</div>
-<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-<div id="remainingText" style="font-weight:bold; font-size: 0.9em;">...</div>
-<div id="targetDate" style="font-size: 0.8em; margin-top:5px; color:var(--accent);">...</div>
-</div>
+  <div class="card">
+    <div class="szyfr-header">
+      <div>
+        <div class="pill">Lokalny szyfrator <span>• offline • bez serwera</span></div>
+        <div class="szyfr-title">Szyfrator tekstu</div>
+        <div class="szyfr-subtitle">Dwie metody: klasyczna (Vigenère) i nowoczesna (AES‑256). Wszystko działa lokalnie.</div>
+      </div>
+    </div>
 
-<div class="history-grid">
-<div class="history-item"><span class="label-small">Dziś</span><span class="history-value" id="todaySats">0</span><span class="future-val" id="todayFuture"></span><span class="moon-val" id="todayMoon"></span></div>
-<div class="history-item"><span class="label-small">Tydzień</span><span class="history-value" id="weekSats">0</span><span class="future-val" id="weekFuture"></span><span class="moon-val" id="weekMoon"></span></div>
-<div class="history-item"><span class="label-small">Miesiąc</span><span class="history-value" id="monthSats">0</span><span class="future-val" id="monthFuture"></span><span class="moon-val" id="monthMoon"></span></div>
-<div class="history-item"><span class="label-small">Rok</span><span class="history-value" id="yearSats">0</span><span class="future-val" id="yearFuture"></span><span class="moon-val" id="yearMoon"></span></div>
-</div>
+    <div class="inner-tabs">
+      <button class="inner-tab-btn active" id="tabBtnVig" onclick="showTab('vig')">🔡 Vigenère + Base64</button>
+      <button class="inner-tab-btn" id="tabBtnAes" onclick="showTab('aes')">🔐 AES‑256</button>
+    </div>
 
-<div class="input-grid">
-<div class="input-group">
-<span class="label-small">Obecne saldo (BTC)</span>
-<input type="number" id="baseBtc" value="0.052" step="0.00000001" oninput="saveAndCalc()">
-</div>
-<div class="input-group">
-<span class="label-small">Kupuję/doba (EUR)</span>
-<input type="number" id="dailyEur" value="12" step="1" oninput="saveAndCalc()">
-</div>
-</div>
+    <!-- Zakładka Vigenère -->
+    <div class="tab-content active" id="tab-vig">
+      <div class="row">
+        <div>
+          <label>Hasło (dla Vigenère i AES pliku)</label>
+          <input type="password" id="keyVig" placeholder="Hasło (min. 3 znaki)">
+        </div>
+      </div>
+      <label>Tekst wejściowy (jawny):</label>
+      <textarea id="inputVig"></textarea>
+      <div class="row">
+        <div>
+          <button onclick="encryptVig()">🔐 Szyfruj (Vigenère + Base64)</button>
+          <button class="secondary" onclick="decryptVig()">🔓 Odszyfruj</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="secondary danger" onclick="clearVig()">🧹 Wyczyść</button>
+      </div>
+      <label>Wynik (Base64 po Vigenère):</label>
+      <textarea id="outputVig"></textarea>
+      <div class="row">
+        <button class="secondary" onclick="copyVig()">📋 Kopiuj wynik</button>
+        <div class="spacer"></div>
+        <button class="secondary" onclick="saveFileVig()">💾 Zapisz do pliku (AES‑256)</button>
+        <button class="secondary" onclick="loadFileVig()">📂 Wczytaj z pliku</button>
+      </div>
+    </div>
 
-<button class="btn-save" onclick="saveRecord()">ZAPISZ SNAPSHOT DO ARKUSZA</button>
+    <!-- Zakładka AES -->
+    <div class="tab-content" id="tab-aes">
+      <div class="row">
+        <div>
+          <label>Hasło główne (AES‑256)</label>
+          <input type="password" id="keyAes" placeholder="Hasło (min. 8 znaków)">
+        </div>
+      </div>
+      <label>Tekst wejściowy (jawny lub zaszyfrowany Base64):</label>
+      <textarea id="inputAes"></textarea>
+      <div class="row">
+        <div>
+          <button onclick="encryptAes()">🔐 Szyfruj (AES‑256)</button>
+          <button class="secondary" onclick="decryptAes()">🔓 Odszyfruj</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="secondary danger" onclick="clearAes()">🧹 Wyczyść</button>
+      </div>
+      <label>Wynik (Base64, zaszyfrowany AES‑256):</label>
+      <textarea id="outputAes"></textarea>
+      <div class="row">
+        <button class="secondary" onclick="copyAes()">📋 Kopiuj wynik</button>
+        <div class="spacer"></div>
+        <button class="secondary" onclick="saveFileAes()">💾 Zapisz do pliku</button>
+        <button class="secondary" onclick="loadFileAes()">📂 Wczytaj z pliku</button>
+      </div>
+    </div>
 
-<div class="chart-container">
-<div class="label-small">Wzrost sats od daty startu</div>
-<canvas id="satsChart" height="200"></canvas>
-</div>
+    <div class="szyfr-footer">
+      <div>Vigenère: warstwa „historyczna". AES‑256: warstwa „pancerna".</div>
+      <div>Wszystkie operacje wykonywane lokalnie — dane nie opuszczają przeglądarki.</div>
+    </div>
+  </div>
 
-<div class="footer">
-<span id="btcPriceLabel">Cena BTC: Ładowanie...</span>
-<span id="fxLabel">Kursy NBP: ...</span>
-<button onclick="document.getElementById('body').classList.toggle('light')">☀️ 🌙</button>
 </div>
 </div>
 
 <script>
+// ═══════════════════════════════
+//  NAVIGATION & THEME
+// ═══════════════════════════════
+
+function switchPage(name) {
+  document.getElementById('page-sats').classList.toggle('active', name === 'sats');
+  document.getElementById('page-szyfr').classList.toggle('active', name === 'szyfr');
+  document.getElementById('navSats').classList.toggle('active', name === 'sats');
+  document.getElementById('navSzyfr').classList.toggle('active', name === 'szyfr');
+}
+
+function applyTheme(theme) {
+  if (theme === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('themeToggle').textContent = '🌙 Nocny';
+  } else {
+    document.body.classList.remove('light');
+    document.getElementById('themeToggle').textContent = '☀️ Jasny';
+  }
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('cs_theme');
+  if (saved) { applyTheme(saved); return; }
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(prefersDark ? 'dark' : 'light');
+}
+
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const isLight = document.body.classList.contains('light');
+  const next = isLight ? 'dark' : 'light';
+  applyTheme(next);
+  localStorage.setItem('cs_theme', next);
+});
+
+initTheme();
+
+// ═══════════════════════════════
+//  SATS ACCUMULATOR
+// ═══════════════════════════════
 const TARGET_BTC = 0.1;
 let btcPriceUsd = 65000;
 let eurPln = 4.30;
 let usdPln = 4.00;
-
 const pageLoadTime = Date.now();
-const WEB_APP_URL = "";
 
 const LS_START_DATE = "dcaStartDate";
 const LS_START_TIME = "dcaStartTime";
 const LS_HISTORY = "dcaSatsHistory";
 
 let satsChart = null;
-let satsHistory = []; // { t: ISOString, sats: number }
+let satsHistory = [];
 
 async function refreshFxRates() {
-try {
-const eur = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/EUR/?format=json");
-const usd = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/USD/?format=json");
-
-eurPln = (await eur.json()).rates[0].mid;
-usdPln = (await usd.json()).rates[0].mid;
-
-document.getElementById("fxLabel").innerText =
-`Kursy NBP: EUR ${eurPln.toFixed(2)} PLN | USD ${usdPln.toFixed(2)} PLN`;
-
-updateCalculations();
-calcSinceDate();
-} catch (e) {
-console.warn("NBP API niedostępne");
-}
+  try {
+    const eur = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/EUR/?format=json");
+    const usd = await fetch("https://api.nbp.pl/api/exchangerates/rates/A/USD/?format=json");
+    eurPln = (await eur.json()).rates[0].mid;
+    usdPln = (await usd.json()).rates[0].mid;
+    document.getElementById("fxLabel").innerText = `Kursy NBP: EUR ${eurPln.toFixed(2)} PLN | USD ${usdPln.toFixed(2)} PLN`;
+    updateCalculations(); calcSinceDate();
+  } catch(e) { console.warn("NBP API niedostępne"); }
 }
 
 async function refreshData() {
-try {
-const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
-btcPriceUsd = parseFloat((await res.json()).price);
-
-document.getElementById("btcPriceLabel").innerText =
-`Cena BTC: $${Math.floor(btcPriceUsd).toLocaleString()}`;
-
-updateCalculations();
-calcSinceDate();
-} catch (e) {
-console.error("Błąd API BTC");
-}
+  try {
+    const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+    btcPriceUsd = parseFloat((await res.json()).price);
+    document.getElementById("btcPriceLabel").innerText = `Cena BTC: $${Math.floor(btcPriceUsd).toLocaleString()}`;
+    updateCalculations(); calcSinceDate();
+  } catch(e) { console.error("Błąd API BTC"); }
 }
 
 function getDailyBtc() {
-const dailyEur = parseFloat(document.getElementById("dailyEur").value) || 0;
-const eurUsd = eurPln / usdPln;
-return (dailyEur * eurUsd) / btcPriceUsd;
+  const dailyEur = parseFloat(document.getElementById("dailyEur").value) || 0;
+  const eurUsd = eurPln / usdPln;
+  return (dailyEur * eurUsd) / btcPriceUsd;
 }
 
 function updateCalculations() {
-const baseBtc = parseFloat(document.getElementById("baseBtc").value) || 0;
-const dailyBtc = getDailyBtc();
+  const baseBtc = parseFloat(document.getElementById("baseBtc").value) || 0;
+  const dailyBtc = getDailyBtc();
 
-// SESJA
-const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
-const sSats = Math.floor(sessionBtc * 100_000_000);
+  const sessionBtc = ((Date.now() - pageLoadTime) / 86400000) * dailyBtc;
+  const sSats = Math.floor(sessionBtc * 100_000_000);
+  const sUsd = (sSats / 100_000_000) * btcPriceUsd;
+  const sPln = sUsd * usdPln;
+  document.getElementById("sessionSats").innerText = sSats.toLocaleString();
+  document.getElementById("sessionFuture").innerHTML = `$${sUsd.toFixed(2)} <span class="pln-val">(${sPln.toFixed(2)} PLN)</span>`;
 
-const sUsd = (sSats / 100_000_000) * btcPriceUsd;
-const sPln = sUsd * usdPln;
+  const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
+  const daysToGoal = dailyBtc > 0 ? remainingBtc / dailyBtc : 0;
+  const targetDate = new Date(Date.now() + daysToGoal * 86400000);
+  document.getElementById("remainingText").innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
+  document.getElementById("targetDate").innerText = daysToGoal > 0 ? `Planowana data: ${targetDate.toLocaleDateString()}` : '';
+  document.getElementById("progressFill").style.width = Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
 
-document.getElementById("sessionSats").innerText = sSats.toLocaleString();
-document.getElementById("sessionFuture").innerHTML =
-`$${sUsd.toFixed(2)} <span class="pln-val">(${sPln.toFixed(2)} PLN)</span>`;
-
-// CEL
-const remainingBtc = Math.max(0, TARGET_BTC - baseBtc);
-const daysToGoal = remainingBtc / dailyBtc;
-const targetDate = new Date(Date.now() + daysToGoal * 86400000);
-
-document.getElementById("remainingText").innerText = `Brakuje: ${remainingBtc.toFixed(6)} BTC`;
-document.getElementById("targetDate").innerText = `Planowana data: ${targetDate.toLocaleDateString()}`;
-document.getElementById("progressFill").style.width =
-Math.min(100, (baseBtc / TARGET_BTC) * 100) + "%";
-
-// DZIŚ / TYDZIEŃ / MIESIĄC / ROK
-const updateField = (id, days) => {
-const sats = Math.floor(days * dailyBtc * 100_000_000);
-const usd = (sats / 100_000_000) * btcPriceUsd;
-const pln = usd * usdPln;
-const moonUsd = (sats / 100_000_000) * 1_000_000;
-const moonPln = moonUsd * usdPln;
-
-document.getElementById(id).innerText = sats.toLocaleString();
-document.getElementById(id.replace("Sats", "Future")).innerHTML =
-`$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
-document.getElementById(id.replace("Sats", "Moon")).innerText =
-`przy 1M$/BTC: $${moonUsd.toLocaleString(undefined,{maximumFractionDigits:2})} (${moonPln.toLocaleString(undefined,{maximumFractionDigits:2})} PLN)`;
-};
-
-updateField("todaySats", 1);
-updateField("weekSats", 7);
-updateField("monthSats", 30);
-updateField("yearSats", 365);
+  const updateField = (id, days) => {
+    const sats = Math.floor(days * dailyBtc * 100_000_000);
+    const usd = (sats / 100_000_000) * btcPriceUsd;
+    const pln = usd * usdPln;
+    const moonUsd = (sats / 100_000_000) * 1_000_000;
+    const moonPln = moonUsd * usdPln;
+    document.getElementById(id).innerText = sats.toLocaleString();
+    document.getElementById(id.replace("Sats","Future")).innerHTML = `$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
+    document.getElementById(id.replace("Sats","Moon")).innerText = `przy 1M$/BTC: $${moonUsd.toLocaleString(undefined,{maximumFractionDigits:2})} (${moonPln.toLocaleString(undefined,{maximumFractionDigits:2})} PLN)`;
+  };
+  updateField("todaySats",1); updateField("weekSats",7); updateField("monthSats",30); updateField("yearSats",365);
 }
 
 function calcSinceDate() {
-const date = document.getElementById("startDate").value;
-const time = document.getElementById("startTime").value;
-
-if (!date || !time) {
-document.getElementById("sinceDateSats").innerText = "0";
-document.getElementById("sinceDateFuture").innerHTML = "...";
-return;
-}
-
-const dailyBtc = getDailyBtc();
-const start = new Date(`${date}T${time}:00`);
-const now = new Date();
-
-const diffDays = (now - start) / 86400000;
-if (diffDays < 0) return;
-
-const sats = Math.floor(diffDays * dailyBtc * 100_000_000);
-const usd = (sats / 100_000_000) * btcPriceUsd;
-const pln = usd * usdPln;
-
-document.getElementById("sinceDateSats").innerText = sats.toLocaleString();
-document.getElementById("sinceDateFuture").innerHTML =
-            `$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
-
-const moonUsd = (sats / 100_000_000) * 1_000_000;
-const moonPln = moonUsd * usdPln;
-document.getElementById("sinceDateMoon").innerText =
-`przy 1M$/BTC: $${moonUsd.toLocaleString(undefined,{maximumFractionDigits:2})} (${moonPln.toLocaleString(undefined,{maximumFractionDigits:2})} PLN)`;
-
-return { sats, start, now };
+  const date = document.getElementById("startDate").value;
+  const time = document.getElementById("startTime").value;
+  if (!date || !time) {
+    document.getElementById("sinceDateSats").innerText = "—";
+    document.getElementById("sinceDateFuture").innerHTML = "...";
+    return;
+  }
+  const dailyBtc = getDailyBtc();
+  const start = new Date(`${date}T${time}:00`);
+  const now = new Date();
+  const diffDays = (now - start) / 86400000;
+  if (diffDays < 0) return;
+  const sats = Math.floor(diffDays * dailyBtc * 100_000_000);
+  const usd = (sats / 100_000_000) * btcPriceUsd;
+  const pln = usd * usdPln;
+  const moonUsd = (sats / 100_000_000) * 1_000_000;
+  const moonPln = moonUsd * usdPln;
+  document.getElementById("sinceDateSats").innerText = sats.toLocaleString();
+  document.getElementById("sinceDateFuture").innerHTML = `$${usd.toFixed(2)} <span class="pln-val">(${pln.toFixed(2)} PLN)</span>`;
+  document.getElementById("sinceDateMoon").innerText = `przy 1M$/BTC: $${moonUsd.toLocaleString(undefined,{maximumFractionDigits:2})} (${moonPln.toLocaleString(undefined,{maximumFractionDigits:2})} PLN)`;
+  return { sats, start, now };
 }
 
 function onStartChange() {
-const date = document.getElementById("startDate").value;
-const time = document.getElementById("startTime").value;
-
-if (date && time) {
-localStorage.setItem(LS_START_DATE, date);
-localStorage.setItem(LS_START_TIME, time);
-// reset historii przy zmianie startu
-satsHistory = [];
-localStorage.removeItem(LS_HISTORY);
-updateChart();
-}
-
-calcSinceDate();
+  const date = document.getElementById("startDate").value;
+  const time = document.getElementById("startTime").value;
+  if (date && time) {
+    localStorage.setItem(LS_START_DATE, date);
+    localStorage.setItem(LS_START_TIME, time);
+    satsHistory = [];
+    localStorage.removeItem(LS_HISTORY);
+    updateChart();
+  }
+  calcSinceDate();
 }
 
 function initStartFromLocalStorage() {
-const savedDate = localStorage.getItem(LS_START_DATE);
-const savedTime = localStorage.getItem(LS_START_TIME);
-
-if (savedDate) document.getElementById("startDate").value = savedDate;
-if (savedTime) document.getElementById("startTime").value = savedTime;
+  const savedDate = localStorage.getItem(LS_START_DATE);
+  const savedTime = localStorage.getItem(LS_START_TIME);
+  if (savedDate) document.getElementById("startDate").value = savedDate;
+  if (savedTime) document.getElementById("startTime").value = savedTime;
 }
 
 function initHistoryFromLocalStorage() {
-const raw = localStorage.getItem(LS_HISTORY);
-if (!raw) {
-satsHistory = [];
-return;
-}
-try {
-const parsed = JSON.parse(raw);
-if (Array.isArray(parsed)) {
-satsHistory = parsed;
-} else {
-satsHistory = [];
-}
-} catch {
-satsHistory = [];
-}
+  const raw = localStorage.getItem(LS_HISTORY);
+  if (!raw) { satsHistory = []; return; }
+  try {
+    const parsed = JSON.parse(raw);
+    satsHistory = Array.isArray(parsed) ? parsed : [];
+  } catch { satsHistory = []; }
 }
 
 function initChart() {
-const ctx = document.getElementById("satsChart").getContext("2d");
-satsChart = new Chart(ctx, {
-type: "line",
-data: {
-labels: satsHistory.map(p => new Date(p.t).toLocaleString()),
-datasets: [{
-label: "Sats (narastająco)",
-data: satsHistory.map(p => p.sats),
-borderColor: "#f7931a",
-backgroundColor: "rgba(247,147,26,0.15)",
-tension: 0.2,
-pointRadius: 0,
-borderWidth: 2
-}]
-},
-options: {
-responsive: true,
-scales: {
-x: {
-ticks: { maxTicksLimit: 6 }
-},
-y: {
-beginAtZero: true
-}
-},
-plugins: {
-legend: { display: false }
-}
-}
-});
+  const ctx = document.getElementById("satsChart").getContext("2d");
+  satsChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: satsHistory.map(p => new Date(p.t).toLocaleString()),
+      datasets: [{
+        label: "Sats (narastająco)",
+        data: satsHistory.map(p => p.sats),
+        borderColor: "#f7931a",
+        backgroundColor: "rgba(247,147,26,0.1)",
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { ticks: { maxTicksLimit: 5, color: '#7070a0' }, grid: { color: '#2a2a3a' } },
+        y: { beginAtZero: true, ticks: { color: '#7070a0' }, grid: { color: '#2a2a3a' } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
 }
 
 function updateChart() {
-if (!satsChart) return;
-satsChart.data.labels = satsHistory.map(p => new Date(p.t).toLocaleString());
-satsChart.data.datasets[0].data = satsHistory.map(p => p.sats);
-satsChart.update();
+  if (!satsChart) return;
+  satsChart.data.labels = satsHistory.map(p => new Date(p.t).toLocaleString());
+  satsChart.data.datasets[0].data = satsHistory.map(p => p.sats);
+  satsChart.update();
 }
 
 function logSatsPoint() {
-const date = document.getElementById("startDate").value;
-const time = document.getElementById("startTime").value;
-if (!date || !time) return;
-
-const result = calcSinceDate();
-if (!result) return;
-
-const now = new Date();
-const sats = result.sats;
-
-satsHistory.push({ t: now.toISOString(), sats });
-// opcjonalnie ogranicz liczbę punktów, np. do 1000
-if (satsHistory.length > 1000) satsHistory.shift();
-
-localStorage.setItem(LS_HISTORY, JSON.stringify(satsHistory));
-updateChart();
+  const date = document.getElementById("startDate").value;
+  const time = document.getElementById("startTime").value;
+  if (!date || !time) return;
+  const result = calcSinceDate();
+  if (!result) return;
+  satsHistory.push({ t: new Date().toISOString(), sats: result.sats });
+  if (satsHistory.length > 1000) satsHistory.shift();
+  localStorage.setItem(LS_HISTORY, JSON.stringify(satsHistory));
+  updateChart();
 }
 
-function saveRecord() {
-// tu możesz dopisać integrację z arkuszem, jeśli chcesz
+function saveRecord() {}
+function saveAndCalc() { updateCalculations(); calcSinceDate(); }
+
+// ═══════════════════════════════
+//  SZYFRATOR — inner tabs
+// ═══════════════════════════════
+function showTab(name) {
+  document.getElementById('tab-vig').classList.toggle('active', name === 'vig');
+  document.getElementById('tab-aes').classList.toggle('active', name === 'aes');
+  document.getElementById('tabBtnVig').classList.toggle('active', name === 'vig');
+  document.getElementById('tabBtnAes').classList.toggle('active', name === 'aes');
 }
 
-function saveAndCalc() {
-updateCalculations();
-calcSinceDate();
+// ═══════════════════════════════
+//  VIGENÈRE
+// ═══════════════════════════════
+function shiftChar(ch, key) {
+  const k = key.charCodeAt(0) - 65;
+  if (ch >= 'A' && ch <= 'Z') return String.fromCharCode((ch.charCodeAt(0) - 65 + k) % 26 + 65);
+  if (ch >= 'a' && ch <= 'z') return String.fromCharCode((ch.charCodeAt(0) - 97 + k) % 26 + 97);
+  return ch;
+}
+function unshiftChar(ch, key) {
+  const k = key.charCodeAt(0) - 65;
+  if (ch >= 'A' && ch <= 'Z') return String.fromCharCode((26 + ch.charCodeAt(0) - 65 - k) % 26 + 65);
+  if (ch >= 'a' && ch <= 'z') return String.fromCharCode((26 + ch.charCodeAt(0) - 97 - k) % 26 + 97);
+  return ch;
+}
+function vigenereEncrypt(text, key) {
+  let out = ""; let ki = 0; key = key.toUpperCase();
+  for (let ch of text) { if (/[A-Za-z]/.test(ch)) { out += shiftChar(ch, key[ki % key.length]); ki++; } else out += ch; }
+  return out;
+}
+function vigenereDecrypt(text, key) {
+  let out = ""; let ki = 0; key = key.toUpperCase();
+  for (let ch of text) { if (/[A-Za-z]/.test(ch)) { out += unshiftChar(ch, key[ki % key.length]); ki++; } else out += ch; }
+  return out;
+}
+function utf8ToBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
+function base64ToUtf8(str) { return decodeURIComponent(escape(atob(str))); }
+
+// ═══════════════════════════════
+//  AES‑256
+// ═══════════════════════════════
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const km = await crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" }, km, { name: "AES-GCM", length: 256 }, false, ["encrypt","decrypt"]);
+}
+async function aesEncrypt(plaintext, password) {
+  const enc = new TextEncoder();
+  const data = enc.encode(plaintext);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+  const cb = new Uint8Array(cipher);
+  const full = new Uint8Array(salt.length + iv.length + cb.length);
+  full.set(salt, 0); full.set(iv, salt.length); full.set(cb, salt.length + iv.length);
+  let binary = "";
+  for (let b of full) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+async function aesDecrypt(base64Data, password) {
+  const binary = atob(base64Data);
+  const full = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) full[i] = binary.charCodeAt(i);
+  const salt = full.slice(0,16); const iv = full.slice(16,28); const cb = full.slice(28);
+  const key = await deriveKey(password, salt);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cb);
+  return new TextDecoder().decode(plain);
 }
 
-// start
+// ═══════════════════════════════
+//  SZYFR HANDLERS
+// ═══════════════════════════════
+function encryptVig() {
+  const key = document.getElementById("keyVig").value.trim();
+  if (key.length < 3) { alert("Hasło musi mieć co najmniej 3 znaki."); return; }
+  const vig = vigenereEncrypt(document.getElementById("inputVig").value, key);
+  document.getElementById("outputVig").value = utf8ToBase64(vig);
+}
+function decryptVig() {
+  const key = document.getElementById("keyVig").value.trim();
+  if (key.length < 3) { alert("Hasło musi mieć co najmniej 3 znaki."); return; }
+  try {
+    const decoded = base64ToUtf8(document.getElementById("inputVig").value);
+    document.getElementById("outputVig").value = vigenereDecrypt(decoded, key);
+  } catch { alert("Niepoprawne dane Base64."); }
+}
+function clearVig() { document.getElementById("inputVig").value = ""; document.getElementById("outputVig").value = ""; }
+function copyVig() {
+  const out = document.getElementById("outputVig").value;
+  if (!out) { alert("Brak danych do skopiowania."); return; }
+  navigator.clipboard.writeText(out); alert("Skopiowano wynik.");
+}
+async function saveFileVig() {
+  const key = document.getElementById("keyVig").value.trim();
+  if (key.length < 3) { alert("Hasło musi mieć co najmniej 3 znaki."); return; }
+  const base = document.getElementById("outputVig").value.trim();
+  if (!base) { alert("Brak danych do zapisania."); return; }
+  try {
+    const encrypted = await aesEncrypt(base, key);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([encrypted], { type: "text/plain" }));
+    a.download = "vigenere_aes.szyfr"; a.click();
+  } catch(e) { alert("Nie udało się zaszyfrować i zapisać pliku."); }
+}
+async function loadFileVig() {
+  const key = document.getElementById("keyVig").value.trim();
+  if (key.length < 3) { alert("Hasło musi mieć co najmniej 3 znaki."); return; }
+  const input = document.createElement("input"); input.type = "file"; input.accept = ".szyfr,.txt";
+  input.onchange = e => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try { document.getElementById("inputVig").value = await aesDecrypt(reader.result, key); }
+      catch { alert("Nie udało się odszyfrować pliku."); }
+    };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+async function encryptAes() {
+  const pw = document.getElementById("keyAes").value.trim();
+  if (pw.length < 8) { alert("Hasło musi mieć co najmniej 8 znaków."); return; }
+  const input = document.getElementById("inputAes").value;
+  if (!input) { alert("Brak tekstu do zaszyfrowania."); return; }
+  try { document.getElementById("outputAes").value = await aesEncrypt(input, pw); }
+  catch { alert("Nie udało się zaszyfrować danych."); }
+}
+async function decryptAes() {
+  const pw = document.getElementById("keyAes").value.trim();
+  if (pw.length < 8) { alert("Hasło musi mieć co najmniej 8 znaków."); return; }
+  const data = document.getElementById("inputAes").value.trim();
+  if (!data) { alert("Brak danych do odszyfrowania."); return; }
+  try { document.getElementById("outputAes").value = await aesDecrypt(data, pw); }
+  catch { alert("Nie udało się odszyfrować. Sprawdź hasło lub dane."); }
+}
+function clearAes() { document.getElementById("inputAes").value = ""; document.getElementById("outputAes").value = ""; }
+function copyAes() {
+  const out = document.getElementById("outputAes").value;
+  if (!out) { alert("Brak danych do skopiowania."); return; }
+  navigator.clipboard.writeText(out); alert("Skopiowano wynik.");
+}
+async function saveFileAes() {
+  const data = document.getElementById("outputAes").value.trim();
+  if (!data) { alert("Brak danych do zapisania."); return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([data], { type: "text/plain" }));
+  a.download = "aes256.szyfr"; a.click();
+}
+async function loadFileAes() {
+  const input = document.createElement("input"); input.type = "file"; input.accept = ".szyfr,.txt";
+  input.onchange = e => {
+    const reader = new FileReader();
+    reader.onload = () => { document.getElementById("inputAes").value = reader.result; };
+    reader.readAsText(e.target.files[0]);
+  };
+  input.click();
+}
+
+// ═══════════════════════════════
+//  INIT
+// ═══════════════════════════════
 initStartFromLocalStorage();
 initHistoryFromLocalStorage();
 refreshFxRates();
@@ -353,19 +1048,15 @@ refreshData();
 
 setInterval(refreshFxRates, 300000);
 setInterval(refreshData, 300000);
-
 setInterval(updateCalculations, 1000);
 setInterval(calcSinceDate, 1000);
-
-// logowanie punktu co 10 minut
 setInterval(logSatsPoint, 600000);
 
-// inicjalizacja wykresu po załadowaniu DOM
 window.addEventListener("load", () => {
-initChart();
-updateChart();
-calcSinceDate();
-updateCalculations();
+  initChart();
+  updateChart();
+  calcSinceDate();
+  updateCalculations();
 });
 </script>
 </body>
