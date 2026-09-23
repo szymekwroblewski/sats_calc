@@ -297,6 +297,23 @@ input:focus {
 }
 .btn-save:hover { opacity: 0.9; transform: translateY(-1px); }
 
+.btn-outline {
+  flex: 1;
+  min-width: 110px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-outline:hover { background: var(--card2); border-color: var(--accent); color: var(--accent); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
 .sats-footer {
   display: flex;
   flex-direction: column;
@@ -658,6 +675,29 @@ input[type=password], input[type=text] {
     </div>
   </div>
 
+  <div class="card">
+    <div class="header-label" style="text-align:left;">🔄 Synchronizacja między urządzeniami</div>
+    <div style="font-size:12px; color:var(--muted); margin-bottom:14px; line-height:1.5;">
+      Saldo BTC, kwota dzienna, adresy portfeli i historia zapisują się tylko lokalnie w tej przeglądarce — nie na koncie ani na serwerze. Żeby mieć te same dane na innym komputerze lub telefonie, wyeksportuj je tutaj i zaimportuj tam.
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-outline" onclick="exportDataFile()">📤 Eksportuj plik</button>
+      <button class="btn-outline" onclick="importDataFile()">📥 Importuj plik</button>
+    </div>
+
+    <div class="section-divider">lub kod tekstowy</div>
+
+    <textarea id="syncCodeArea" style="height:80px; font-size:10px;" placeholder='Kliknij "Wygeneruj kod", aby utworzyć kod do skopiowania — albo wklej tu kod z innego urządzenia i kliknij "Wczytaj".'></textarea>
+    <div class="btn-row">
+      <button class="btn-outline" onclick="showSyncCode()">🔑 Wygeneruj kod</button>
+      <button class="btn-outline" onclick="copySyncCode()">📋 Kopiuj</button>
+      <button class="btn-outline" onclick="importSyncCode()">⬇️ Wczytaj</button>
+    </div>
+
+    <div id="syncStatus" class="future-val" style="text-align:center;"></div>
+  </div>
+
 </div>
 </div>
 
@@ -858,6 +898,8 @@ const pageLoadTime = Date.now();
 const LS_START_DATE = "dcaStartDate";
 const LS_START_TIME = "dcaStartTime";
 const LS_HISTORY = "dcaSatsHistory";
+const LS_BASE_BTC = "dcaBaseBtc";
+const LS_DAILY_EUR = "dcaDailyEur";
 
 let satsChart = null;
 let satsHistory = [];
@@ -1023,7 +1065,18 @@ function logSatsPoint() {
 }
 
 function saveRecord() {}
-function saveAndCalc() { updateCalculations(); calcSinceDate(); }
+function saveAndCalc() {
+  localStorage.setItem(LS_BASE_BTC, document.getElementById("baseBtc").value);
+  localStorage.setItem(LS_DAILY_EUR, document.getElementById("dailyEur").value);
+  updateCalculations();
+  calcSinceDate();
+}
+function initBaseFromLocalStorage() {
+  const b = localStorage.getItem(LS_BASE_BTC);
+  const d = localStorage.getItem(LS_DAILY_EUR);
+  if (b !== null) document.getElementById("baseBtc").value = b;
+  if (d !== null) document.getElementById("dailyEur").value = d;
+}
 
 // ═══════════════════════════════
 //  SZYFRATOR — inner tabs
@@ -1459,9 +1512,126 @@ function renderPortfolioHistory(history) {
 }
 
 // ═══════════════════════════════
+//  SYNCHRONIZACJA MIĘDZY URZĄDZENIAMI
+// ═══════════════════════════════
+function buildSyncBundle() {
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    baseBtc: document.getElementById("baseBtc").value,
+    dailyEur: document.getElementById("dailyEur").value,
+    startDate: document.getElementById("startDate").value,
+    startTime: document.getElementById("startTime").value,
+    wallets,
+    portfolioHistory: loadPortfolioHistory(),
+    satsHistory,
+    theme: localStorage.getItem('cs_theme') || null
+  };
+}
+
+function applyImportedBundle(bundle) {
+  if (bundle.baseBtc !== undefined) {
+    document.getElementById("baseBtc").value = bundle.baseBtc;
+    localStorage.setItem(LS_BASE_BTC, bundle.baseBtc);
+  }
+  if (bundle.dailyEur !== undefined) {
+    document.getElementById("dailyEur").value = bundle.dailyEur;
+    localStorage.setItem(LS_DAILY_EUR, bundle.dailyEur);
+  }
+  if (bundle.startDate) {
+    document.getElementById("startDate").value = bundle.startDate;
+    localStorage.setItem(LS_START_DATE, bundle.startDate);
+  }
+  if (bundle.startTime) {
+    document.getElementById("startTime").value = bundle.startTime;
+    localStorage.setItem(LS_START_TIME, bundle.startTime);
+  }
+  if (Array.isArray(bundle.wallets)) {
+    wallets = bundle.wallets;
+    saveWallets();
+  }
+  if (Array.isArray(bundle.portfolioHistory)) {
+    localStorage.setItem(LS_PORTFOLIO_HISTORY, JSON.stringify(bundle.portfolioHistory));
+  }
+  if (Array.isArray(bundle.satsHistory)) {
+    satsHistory = bundle.satsHistory;
+    localStorage.setItem(LS_HISTORY, JSON.stringify(satsHistory));
+  }
+  if (bundle.theme) {
+    localStorage.setItem('cs_theme', bundle.theme);
+    applyTheme(bundle.theme);
+  }
+
+  updateCalculations();
+  calcSinceDate();
+  updateChart();
+  renderWalletList();
+  walletResults = {};
+  renderPortfolioHistory(loadPortfolioHistory());
+  const status = document.getElementById("syncStatus");
+  if (status) status.innerText = "Zaimportowano dane — " + new Date().toLocaleTimeString();
+}
+
+function exportDataFile() {
+  const blob = new Blob([JSON.stringify(buildSyncBundle(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `crypto_suite_dane_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+function importDataFile() {
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = ".json,application/json";
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { applyImportedBundle(JSON.parse(reader.result)); }
+      catch(err) {
+        const status = document.getElementById("syncStatus");
+        if (status) status.innerText = "Nieprawidłowy plik.";
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function showSyncCode() {
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(buildSyncBundle()))));
+  const ta = document.getElementById("syncCodeArea");
+  ta.value = code;
+  ta.select();
+}
+
+function copySyncCode() {
+  const ta = document.getElementById("syncCodeArea");
+  if (!ta.value.trim()) showSyncCode();
+  navigator.clipboard.writeText(ta.value);
+  const status = document.getElementById("syncStatus");
+  if (status) status.innerText = "Skopiowano kod do schowka.";
+}
+
+function importSyncCode() {
+  const ta = document.getElementById("syncCodeArea");
+  const code = ta.value.trim();
+  const status = document.getElementById("syncStatus");
+  if (!code) { if (status) status.innerText = "Wklej najpierw kod."; return; }
+  try {
+    const json = decodeURIComponent(escape(atob(code)));
+    applyImportedBundle(JSON.parse(json));
+  } catch(e) {
+    if (status) status.innerText = "Nieprawidłowy kod synchronizacji.";
+  }
+}
+
+// ═══════════════════════════════
 //  INIT
 // ═══════════════════════════════
 initStartFromLocalStorage();
+initBaseFromLocalStorage();
 initHistoryFromLocalStorage();
 loadWallets();
 renderWalletList();
