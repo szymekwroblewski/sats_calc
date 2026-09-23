@@ -599,6 +599,7 @@ input[type=password], input[type=text] {
     </button>
   </div>
   <div class="nav-right">
+    <a href="https://pathtobitcoin.xyz/the-hodl-report/" target="_blank" rel="noopener noreferrer" class="theme-btn" style="text-decoration:none; display:inline-flex; align-items:center;">📊 The Hodl Report</a>
     <button class="theme-btn" id="themeToggle">☀️ Jasny</button>
   </div>
 </nav>
@@ -1343,16 +1344,27 @@ async function fetchEthBalance(addr) {
   const d = await res.json();
   return d.balance / 1e18;
 }
+const SOL_RPC_ENDPOINTS = [
+  "https://solana-rpc.publicnode.com",
+  "https://rpc.ankr.com/solana",
+  "https://api.mainnet-beta.solana.com"
+];
 async function fetchSolBalance(addr) {
-  const res = await fetch("https://api.mainnet-beta.solana.com", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [addr] })
-  });
-  if (!res.ok) throw new Error("sol");
-  const d = await res.json();
-  if (d.error) throw new Error("sol");
-  return d.result.value / 1e9;
+  let lastErr = null;
+  for (const endpoint of SOL_RPC_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [addr] })
+      });
+      if (!res.ok) throw new Error("sol http " + res.status);
+      const d = await res.json();
+      if (d.error) throw new Error("sol rpc error");
+      return d.result.value / 1e9;
+    } catch(e) { lastErr = e; }
+  }
+  throw lastErr || new Error("sol");
 }
 async function fetchXrpBalance(addr) {
   const res = await fetch(`https://api.xrpscan.com/api/v1/account/${encodeURIComponent(addr)}`);
