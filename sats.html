@@ -474,6 +474,58 @@ input[type=password], input[type=text] {
 #portfolioStatus { text-align: center; margin-top: 4px; min-height: 14px; }
 #historyList { line-height: 1.7; }
 
+.wallet-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+}
+.wallet-row:hover { border-color: rgba(34,197,94,0.3); }
+.wallet-row-main { flex: 1; min-width: 0; }
+.wallet-row-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.wallet-row-label { font-size: 13px; font-weight: 600; }
+.wallet-row-address {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wallet-row-value {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  text-align: right;
+}
+.wallet-row-remove {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.15s;
+}
+.wallet-row-remove:hover { background: rgba(239,68,68,0.12); border-color: var(--danger); color: var(--danger); }
+.wallet-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 10px 0; }
+
 /* ── SECTION DIVIDER ── */
 .section-divider {
   display: flex;
@@ -697,24 +749,33 @@ input[type=password], input[type=text] {
 <div class="sats-wrap" style="max-width:560px;">
 
   <div class="card">
-    <div class="header-label" style="text-align:left;">Adresy portfela</div>
+    <div class="header-label" style="text-align:left;">Portfele</div>
 
-    <div class="wallet-input-group">
-      <span class="label-small" style="text-align:left;">BTC adres<span class="coin-tag">BTC</span></span>
-      <input type="text" id="addrBtc" placeholder="bc1..." oninput="saveWalletAddresses()">
+    <div id="walletList"></div>
+
+    <div class="section-divider">dodaj portfel</div>
+
+    <div class="input-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:10px;">
+      <div class="input-group" style="text-align:left;">
+        <span class="label-small" style="text-align:left;">Kryptowaluta</span>
+        <select id="newWalletCoin" style="width:100%; padding:9px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13px;">
+          <option value="btc">BTC</option>
+          <option value="eth">ETH</option>
+          <option value="sol">SOL</option>
+          <option value="xrp">XRP</option>
+        </select>
+      </div>
+      <div class="input-group" style="text-align:left;">
+        <span class="label-small" style="text-align:left;">Etykieta (opcjonalnie)</span>
+        <input type="text" id="newWalletLabel" placeholder="np. Ledger, Kraken...">
+      </div>
     </div>
-    <div class="wallet-input-group">
-      <span class="label-small" style="text-align:left;">ETH adres<span class="coin-tag">ETH</span></span>
-      <input type="text" id="addrEth" placeholder="0x..." oninput="saveWalletAddresses()">
+    <div class="wallet-input-group" style="margin-bottom:12px;">
+      <span class="label-small" style="text-align:left;">Adres portfela</span>
+      <input type="text" id="newWalletAddress" placeholder="wklej adres...">
     </div>
-    <div class="wallet-input-group">
-      <span class="label-small" style="text-align:left;">SOL adres<span class="coin-tag">SOL</span></span>
-      <input type="text" id="addrSol" placeholder="np. 9WzD..." oninput="saveWalletAddresses()">
-    </div>
-    <div class="wallet-input-group" style="margin-bottom:16px;">
-      <span class="label-small" style="text-align:left;">XRP adres<span class="coin-tag">XRP</span></span>
-      <input type="text" id="addrXrp" placeholder="r..." oninput="saveWalletAddresses()">
-    </div>
+
+    <button class="btn-save" onclick="addWallet()" style="margin-bottom:6px; background:linear-gradient(135deg, var(--green), #4ade80); box-shadow:0 4px 20px rgba(34,197,94,0.3);">+ DODAJ PORTFEL</button>
 
     <button class="btn-save" onclick="refreshPortfolio()" style="margin-bottom:6px;">ODŚWIEŻ SALDA I WYCEŃ</button>
     <div id="portfolioStatus" class="future-val"></div>
@@ -1123,32 +1184,95 @@ async function loadFileAes() {
 }
 
 // ═══════════════════════════════
-//  PORTFEL — adresy i persystencja
+//  PORTFEL — portfele (wiele adresów) i persystencja
 // ═══════════════════════════════
-const LS_WALLETS = "portfolioWallets";
+const LS_WALLETS = "portfolioWallets";       // legacy (single address per coin) — migrated on load
+const LS_WALLETS_V2 = "portfolioWalletsV2";  // array of {id, label, coin, address}
 const LS_PORTFOLIO_HISTORY = "portfolioHistory";
 const COIN_LABELS = { btc: "BTC", eth: "ETH", sol: "SOL", xrp: "XRP" };
 const COIN_DECIMALS = { btc: 8, eth: 6, sol: 4, xrp: 2 };
 
-function loadWalletAddresses() {
-  const raw = localStorage.getItem(LS_WALLETS);
-  if (!raw) return;
-  try {
-    const w = JSON.parse(raw);
-    if (w.btc) document.getElementById("addrBtc").value = w.btc;
-    if (w.eth) document.getElementById("addrEth").value = w.eth;
-    if (w.sol) document.getElementById("addrSol").value = w.sol;
-    if (w.xrp) document.getElementById("addrXrp").value = w.xrp;
-  } catch(e) {}
+let wallets = [];
+let walletResults = {}; // id -> { balance, valueUsd, valuePln, error }
+
+function genWalletId() {
+  return 'w_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
-function saveWalletAddresses() {
-  const w = {
-    btc: document.getElementById("addrBtc").value.trim(),
-    eth: document.getElementById("addrEth").value.trim(),
-    sol: document.getElementById("addrSol").value.trim(),
-    xrp: document.getElementById("addrXrp").value.trim()
-  };
-  localStorage.setItem(LS_WALLETS, JSON.stringify(w));
+
+function loadWallets() {
+  const raw = localStorage.getItem(LS_WALLETS_V2);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      wallets = Array.isArray(parsed) ? parsed : [];
+    } catch(e) { wallets = []; }
+    return;
+  }
+  // migracja ze starego formatu (jeden adres na monetę)
+  const legacyRaw = localStorage.getItem(LS_WALLETS);
+  if (legacyRaw) {
+    try {
+      const legacy = JSON.parse(legacyRaw);
+      wallets = [];
+      for (const coin of ["btc","eth","sol","xrp"]) {
+        if (legacy[coin]) wallets.push({ id: genWalletId(), label: "", coin, address: legacy[coin] });
+      }
+      saveWallets();
+    } catch(e) { wallets = []; }
+  }
+}
+
+function saveWallets() {
+  localStorage.setItem(LS_WALLETS_V2, JSON.stringify(wallets));
+}
+
+function shortenAddress(addr) {
+  return addr.length > 16 ? addr.slice(0, 8) + '…' + addr.slice(-6) : addr;
+}
+
+function renderWalletList() {
+  const el = document.getElementById("walletList");
+  if (wallets.length === 0) {
+    el.innerHTML = '<div class="wallet-empty">Brak dodanych portfeli — dodaj pierwszy poniżej.</div>';
+    return;
+  }
+  el.innerHTML = wallets.map(w => {
+    const r = walletResults[w.id];
+    const valueHtml = r
+      ? (r.error ? '<span class="wallet-row-value" style="color:var(--danger);">błąd</span>'
+                 : `<span class="wallet-row-value">$${r.valueUsd.toFixed(2)}</span>`)
+      : '<span class="wallet-row-value" style="color:var(--muted);">—</span>';
+    return `<div class="wallet-row">
+      <div class="wallet-row-main">
+        <div class="wallet-row-top">
+          <span class="coin-tag">${COIN_LABELS[w.coin]}</span>
+          <span class="wallet-row-label">${w.label ? w.label.replace(/</g,'&lt;') : COIN_LABELS[w.coin] + ' portfel'}</span>
+        </div>
+        <div class="wallet-row-address">${w.address.replace(/</g,'&lt;')}</div>
+      </div>
+      ${valueHtml}
+      <button class="wallet-row-remove" onclick="removeWallet('${w.id}')" title="Usuń">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addWallet() {
+  const coin = document.getElementById("newWalletCoin").value;
+  const label = document.getElementById("newWalletLabel").value.trim();
+  const address = document.getElementById("newWalletAddress").value.trim();
+  if (!address) { alert("Podaj adres portfela."); return; }
+  wallets.push({ id: genWalletId(), label, coin, address });
+  saveWallets();
+  renderWalletList();
+  document.getElementById("newWalletLabel").value = "";
+  document.getElementById("newWalletAddress").value = "";
+}
+
+function removeWallet(id) {
+  wallets = wallets.filter(w => w.id !== id);
+  delete walletResults[id];
+  saveWallets();
+  renderWalletList();
 }
 
 // ═══════════════════════════════
@@ -1194,15 +1318,15 @@ async function fetchCryptoPrices() {
 
 const PORTFOLIO_FETCHERS = { btc: fetchBtcBalance, eth: fetchEthBalance, sol: fetchSolBalance, xrp: fetchXrpBalance };
 
-function renderHoldings(holdings, totalUsd, totalPln) {
+function renderHoldings(holdingsByCoin, totalUsd, totalPln) {
   const card = document.getElementById("holdingsCard");
   const list = document.getElementById("holdingsList");
-  const coins = Object.keys(holdings);
+  const coins = Object.keys(holdingsByCoin);
   if (coins.length === 0) { card.style.display = "none"; return; }
   card.style.display = "block";
   let html = '<div class="history-grid">';
   for (const k of ["btc","eth","sol","xrp"]) {
-    const h = holdings[k];
+    const h = holdingsByCoin[k];
     if (!h) continue;
     html += `<div class="history-item">
       <span class="label-small">${COIN_LABELS[k]}</span>
@@ -1216,16 +1340,9 @@ function renderHoldings(holdings, totalUsd, totalPln) {
 }
 
 async function refreshPortfolio() {
-  saveWalletAddresses();
   const status = document.getElementById("portfolioStatus");
-  const addrs = {
-    btc: document.getElementById("addrBtc").value.trim(),
-    eth: document.getElementById("addrEth").value.trim(),
-    sol: document.getElementById("addrSol").value.trim(),
-    xrp: document.getElementById("addrXrp").value.trim()
-  };
-  if (!addrs.btc && !addrs.eth && !addrs.sol && !addrs.xrp) {
-    status.innerText = "Podaj przynajmniej jeden adres portfela.";
+  if (wallets.length === 0) {
+    status.innerText = "Dodaj przynajmniej jeden portfel.";
     return;
   }
 
@@ -1234,31 +1351,42 @@ async function refreshPortfolio() {
   try { prices = await fetchCryptoPrices(); }
   catch(e) { status.innerText = "Błąd pobierania cen (Binance)."; return; }
 
-  const holdings = {};
-  const errors = [];
+  walletResults = {};
+  const holdingsByCoin = {}; // coin -> { balance, valueUsd, valuePln }
+  const errorLabels = [];
   let totalUsd = 0;
-  for (const k of Object.keys(addrs)) {
-    if (!addrs[k]) continue;
-    try {
-      const balance = await PORTFOLIO_FETCHERS[k](addrs[k]);
-      const valueUsd = balance * (prices[k] || 0);
-      holdings[k] = { balance, priceUsd: prices[k], valueUsd, valuePln: valueUsd * usdPln };
-      totalUsd += valueUsd;
-    } catch(e) { errors.push(COIN_LABELS[k]); }
-  }
-  const totalPln = totalUsd * usdPln;
-  renderHoldings(holdings, totalUsd, totalPln);
 
-  const okCount = Object.keys(holdings).length;
+  for (const w of wallets) {
+    try {
+      const balance = await PORTFOLIO_FETCHERS[w.coin](w.address);
+      const valueUsd = balance * (prices[w.coin] || 0);
+      const valuePln = valueUsd * usdPln;
+      walletResults[w.id] = { balance, valueUsd, valuePln };
+      if (!holdingsByCoin[w.coin]) holdingsByCoin[w.coin] = { balance: 0, valueUsd: 0, valuePln: 0 };
+      holdingsByCoin[w.coin].balance += balance;
+      holdingsByCoin[w.coin].valueUsd += valueUsd;
+      holdingsByCoin[w.coin].valuePln += valuePln;
+      totalUsd += valueUsd;
+    } catch(e) {
+      walletResults[w.id] = { error: true };
+      errorLabels.push(w.label || COIN_LABELS[w.coin]);
+    }
+  }
+
+  const totalPln = totalUsd * usdPln;
+  renderWalletList();
+  renderHoldings(holdingsByCoin, totalUsd, totalPln);
+
+  const okCount = Object.values(walletResults).filter(r => !r.error).length;
   if (okCount === 0) {
-    status.innerText = `Nie udało się pobrać sald: ${errors.join(", ")}.`;
+    status.innerText = `Nie udało się pobrać sald: ${errorLabels.join(", ")}.`;
     return;
   }
-  status.innerText = errors.length
-    ? `Zaktualizowano (błąd: ${errors.join(", ")}) — ${new Date().toLocaleTimeString()}`
+  status.innerText = errorLabels.length
+    ? `Zaktualizowano (błąd: ${errorLabels.join(", ")}) — ${new Date().toLocaleTimeString()}`
     : `Zaktualizowano — ${new Date().toLocaleTimeString()}`;
 
-  saveMonthlySnapshot(holdings, totalUsd, totalPln);
+  saveMonthlySnapshot(holdingsByCoin, totalUsd, totalPln);
 }
 
 // ═══════════════════════════════
@@ -1335,7 +1463,8 @@ function renderPortfolioHistory(history) {
 // ═══════════════════════════════
 initStartFromLocalStorage();
 initHistoryFromLocalStorage();
-loadWalletAddresses();
+loadWallets();
+renderWalletList();
 renderPortfolioHistory(loadPortfolioHistory());
 refreshFxRates();
 refreshData();
