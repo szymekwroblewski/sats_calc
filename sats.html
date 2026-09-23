@@ -120,6 +120,11 @@ body.light .top-nav { background: rgba(240,240,247,0.9); }
   border-color: rgba(79,142,247,0.3);
   color: var(--blue);
 }
+.nav-tab.active.green-tab {
+  background: rgba(34,197,94,0.12);
+  border-color: rgba(34,197,94,0.3);
+  color: var(--green);
+}
 
 .nav-right {
   margin-left: auto;
@@ -452,6 +457,23 @@ input[type=password], input[type=text] {
   padding-top: 12px;
 }
 
+/* ── PORTFEL PAGE ── */
+.wallet-input-group { text-align: left; margin-bottom: 12px; }
+.wallet-input-group input[type=text] { width: 100%; text-align: left; }
+.coin-tag {
+  display: inline-block;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--green-dim, rgba(34,197,94,0.12));
+  color: var(--green);
+  margin-left: 6px;
+}
+#portfolioStatus { text-align: center; margin-top: 4px; min-height: 14px; }
+#historyList { line-height: 1.7; }
+
 /* ── SECTION DIVIDER ── */
 .section-divider {
   display: flex;
@@ -502,6 +524,9 @@ input[type=password], input[type=text] {
     </button>
     <button class="nav-tab blue-tab" id="navSzyfr" onclick="switchPage('szyfr')">
       🔐 Szyfrator
+    </button>
+    <button class="nav-tab green-tab" id="navPortfolio" onclick="switchPage('portfolio')">
+      💼 Portfel
     </button>
   </div>
   <div class="nav-right">
@@ -667,6 +692,59 @@ input[type=password], input[type=text] {
 </div>
 </div>
 
+<!-- ═══════════════ PAGE: PORTFEL ═══════════════ -->
+<div class="page" id="page-portfolio">
+<div class="sats-wrap" style="max-width:560px;">
+
+  <div class="card">
+    <div class="header-label" style="text-align:left;">Adresy portfela</div>
+
+    <div class="wallet-input-group">
+      <span class="label-small" style="text-align:left;">BTC adres<span class="coin-tag">BTC</span></span>
+      <input type="text" id="addrBtc" placeholder="bc1..." oninput="saveWalletAddresses()">
+    </div>
+    <div class="wallet-input-group">
+      <span class="label-small" style="text-align:left;">ETH adres<span class="coin-tag">ETH</span></span>
+      <input type="text" id="addrEth" placeholder="0x..." oninput="saveWalletAddresses()">
+    </div>
+    <div class="wallet-input-group">
+      <span class="label-small" style="text-align:left;">SOL adres<span class="coin-tag">SOL</span></span>
+      <input type="text" id="addrSol" placeholder="np. 9WzD..." oninput="saveWalletAddresses()">
+    </div>
+    <div class="wallet-input-group" style="margin-bottom:16px;">
+      <span class="label-small" style="text-align:left;">XRP adres<span class="coin-tag">XRP</span></span>
+      <input type="text" id="addrXrp" placeholder="r..." oninput="saveWalletAddresses()">
+    </div>
+
+    <button class="btn-save" onclick="refreshPortfolio()" style="margin-bottom:6px;">ODŚWIEŻ SALDA I WYCEŃ</button>
+    <div id="portfolioStatus" class="future-val"></div>
+  </div>
+
+  <div class="card" id="holdingsCard" style="display:none;">
+    <div class="header-label">Aktualna wartość portfela</div>
+    <div id="holdingsList"></div>
+    <div class="goal-box" style="margin-bottom:0;">
+      <div class="label-small">Razem</div>
+      <div class="history-value" id="totalValue" style="font-size:22px; color:var(--accent);">—</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="header-label">Historia miesięczna</div>
+    <div class="chart-container">
+      <canvas id="portfolioChart"></canvas>
+    </div>
+    <div class="section-divider">migawki</div>
+    <div id="historyList" class="future-val" style="text-align:left;"></div>
+  </div>
+
+  <div class="sats-footer">
+    <span>Salda pobierane z publicznych eksploratorów (Blockstream, BlockCypher, Solana RPC, XRPScan). Adresy i historia zapisywane są lokalnie w przeglądarce.</span>
+  </div>
+
+</div>
+</div>
+
 <script>
 // ═══════════════════════════════
 //  NAVIGATION & THEME
@@ -675,8 +753,10 @@ input[type=password], input[type=text] {
 function switchPage(name) {
   document.getElementById('page-sats').classList.toggle('active', name === 'sats');
   document.getElementById('page-szyfr').classList.toggle('active', name === 'szyfr');
+  document.getElementById('page-portfolio').classList.toggle('active', name === 'portfolio');
   document.getElementById('navSats').classList.toggle('active', name === 'sats');
   document.getElementById('navSzyfr').classList.toggle('active', name === 'szyfr');
+  document.getElementById('navPortfolio').classList.toggle('active', name === 'portfolio');
 }
 
 function applyTheme(theme) {
@@ -1043,10 +1123,220 @@ async function loadFileAes() {
 }
 
 // ═══════════════════════════════
+//  PORTFEL — adresy i persystencja
+// ═══════════════════════════════
+const LS_WALLETS = "portfolioWallets";
+const LS_PORTFOLIO_HISTORY = "portfolioHistory";
+const COIN_LABELS = { btc: "BTC", eth: "ETH", sol: "SOL", xrp: "XRP" };
+const COIN_DECIMALS = { btc: 8, eth: 6, sol: 4, xrp: 2 };
+
+function loadWalletAddresses() {
+  const raw = localStorage.getItem(LS_WALLETS);
+  if (!raw) return;
+  try {
+    const w = JSON.parse(raw);
+    if (w.btc) document.getElementById("addrBtc").value = w.btc;
+    if (w.eth) document.getElementById("addrEth").value = w.eth;
+    if (w.sol) document.getElementById("addrSol").value = w.sol;
+    if (w.xrp) document.getElementById("addrXrp").value = w.xrp;
+  } catch(e) {}
+}
+function saveWalletAddresses() {
+  const w = {
+    btc: document.getElementById("addrBtc").value.trim(),
+    eth: document.getElementById("addrEth").value.trim(),
+    sol: document.getElementById("addrSol").value.trim(),
+    xrp: document.getElementById("addrXrp").value.trim()
+  };
+  localStorage.setItem(LS_WALLETS, JSON.stringify(w));
+}
+
+// ═══════════════════════════════
+//  PORTFEL — pobieranie sald (publiczne eksploratory, bez kluczy)
+// ═══════════════════════════════
+async function fetchBtcBalance(addr) {
+  const res = await fetch(`https://blockstream.info/api/address/${encodeURIComponent(addr)}`);
+  if (!res.ok) throw new Error("btc");
+  const d = await res.json();
+  return (d.chain_stats.funded_txo_sum - d.chain_stats.spent_txo_sum) / 1e8;
+}
+async function fetchEthBalance(addr) {
+  const res = await fetch(`https://api.blockcypher.com/v1/eth/main/addrs/${encodeURIComponent(addr)}/balance`);
+  if (!res.ok) throw new Error("eth");
+  const d = await res.json();
+  return d.balance / 1e18;
+}
+async function fetchSolBalance(addr) {
+  const res = await fetch("https://api.mainnet-beta.solana.com", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [addr] })
+  });
+  if (!res.ok) throw new Error("sol");
+  const d = await res.json();
+  if (d.error) throw new Error("sol");
+  return d.result.value / 1e9;
+}
+async function fetchXrpBalance(addr) {
+  const res = await fetch(`https://api.xrpscan.com/api/v1/account/${encodeURIComponent(addr)}`);
+  if (!res.ok) throw new Error("xrp");
+  const d = await res.json();
+  return parseFloat(d.xrpBalance) || 0;
+}
+async function fetchCryptoPrices() {
+  const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbols=["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT"]');
+  if (!res.ok) throw new Error("prices");
+  const arr = await res.json();
+  const map = {};
+  arr.forEach(x => map[x.symbol] = parseFloat(x.price));
+  return { btc: map.BTCUSDT, eth: map.ETHUSDT, sol: map.SOLUSDT, xrp: map.XRPUSDT };
+}
+
+const PORTFOLIO_FETCHERS = { btc: fetchBtcBalance, eth: fetchEthBalance, sol: fetchSolBalance, xrp: fetchXrpBalance };
+
+function renderHoldings(holdings, totalUsd, totalPln) {
+  const card = document.getElementById("holdingsCard");
+  const list = document.getElementById("holdingsList");
+  const coins = Object.keys(holdings);
+  if (coins.length === 0) { card.style.display = "none"; return; }
+  card.style.display = "block";
+  let html = '<div class="history-grid">';
+  for (const k of ["btc","eth","sol","xrp"]) {
+    const h = holdings[k];
+    if (!h) continue;
+    html += `<div class="history-item">
+      <span class="label-small">${COIN_LABELS[k]}</span>
+      <span class="history-value">${h.balance.toFixed(COIN_DECIMALS[k])}</span>
+      <span class="future-val">$${h.valueUsd.toFixed(2)} <span class="pln-val">(${h.valuePln.toFixed(2)} PLN)</span></span>
+    </div>`;
+  }
+  html += '</div>';
+  list.innerHTML = html;
+  document.getElementById("totalValue").innerHTML = `$${totalUsd.toFixed(2)} <span class="pln-val">(${totalPln.toFixed(2)} PLN)</span>`;
+}
+
+async function refreshPortfolio() {
+  saveWalletAddresses();
+  const status = document.getElementById("portfolioStatus");
+  const addrs = {
+    btc: document.getElementById("addrBtc").value.trim(),
+    eth: document.getElementById("addrEth").value.trim(),
+    sol: document.getElementById("addrSol").value.trim(),
+    xrp: document.getElementById("addrXrp").value.trim()
+  };
+  if (!addrs.btc && !addrs.eth && !addrs.sol && !addrs.xrp) {
+    status.innerText = "Podaj przynajmniej jeden adres portfela.";
+    return;
+  }
+
+  status.innerText = "Pobieranie cen i sald...";
+  let prices;
+  try { prices = await fetchCryptoPrices(); }
+  catch(e) { status.innerText = "Błąd pobierania cen (Binance)."; return; }
+
+  const holdings = {};
+  const errors = [];
+  let totalUsd = 0;
+  for (const k of Object.keys(addrs)) {
+    if (!addrs[k]) continue;
+    try {
+      const balance = await PORTFOLIO_FETCHERS[k](addrs[k]);
+      const valueUsd = balance * (prices[k] || 0);
+      holdings[k] = { balance, priceUsd: prices[k], valueUsd, valuePln: valueUsd * usdPln };
+      totalUsd += valueUsd;
+    } catch(e) { errors.push(COIN_LABELS[k]); }
+  }
+  const totalPln = totalUsd * usdPln;
+  renderHoldings(holdings, totalUsd, totalPln);
+
+  const okCount = Object.keys(holdings).length;
+  if (okCount === 0) {
+    status.innerText = `Nie udało się pobrać sald: ${errors.join(", ")}.`;
+    return;
+  }
+  status.innerText = errors.length
+    ? `Zaktualizowano (błąd: ${errors.join(", ")}) — ${new Date().toLocaleTimeString()}`
+    : `Zaktualizowano — ${new Date().toLocaleTimeString()}`;
+
+  saveMonthlySnapshot(holdings, totalUsd, totalPln);
+}
+
+// ═══════════════════════════════
+//  PORTFEL — historia miesięczna
+// ═══════════════════════════════
+function loadPortfolioHistory() {
+  const raw = localStorage.getItem(LS_PORTFOLIO_HISTORY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e) { return []; }
+}
+
+function saveMonthlySnapshot(holdings, totalUsd, totalPln) {
+  const history = loadPortfolioHistory();
+  const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const entry = { month, ts: new Date().toISOString(), holdings, totalUsd, totalPln };
+  const idx = history.findIndex(e => e.month === month);
+  if (idx >= 0) history[idx] = entry; else history.push(entry);
+  history.sort((a, b) => a.month.localeCompare(b.month));
+  localStorage.setItem(LS_PORTFOLIO_HISTORY, JSON.stringify(history));
+  renderPortfolioHistory(history);
+}
+
+let portfolioChart = null;
+function renderPortfolioHistory(history) {
+  const listEl = document.getElementById("historyList");
+  if (history.length === 0) {
+    listEl.innerText = 'Brak zapisanych migawek. Kliknij "Odśwież salda i wyceń", aby zapisać pierwszą — kolejne odświeżenia w tym samym miesiącu nadpisują migawkę tego miesiąca.';
+  } else {
+    listEl.innerHTML = history.slice().reverse().map(e =>
+      `${e.month}: $${e.totalUsd.toFixed(2)} <span class="pln-val">(${e.totalPln.toFixed(2)} PLN)</span>`
+    ).join('<br>');
+  }
+
+  const ctx = document.getElementById("portfolioChart").getContext("2d");
+  const labels = history.map(e => e.month);
+  const data = history.map(e => e.totalUsd);
+  if (portfolioChart) {
+    portfolioChart.data.labels = labels;
+    portfolioChart.data.datasets[0].data = data;
+    portfolioChart.update();
+  } else {
+    portfolioChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Wartość portfela (USD)",
+          data,
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34,197,94,0.1)",
+          tension: 0.3,
+          pointRadius: 3,
+          borderWidth: 2,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { ticks: { color: '#7070a0' }, grid: { color: '#2a2a3a' } },
+          y: { beginAtZero: true, ticks: { color: '#7070a0' }, grid: { color: '#2a2a3a' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+}
+
+// ═══════════════════════════════
 //  INIT
 // ═══════════════════════════════
 initStartFromLocalStorage();
 initHistoryFromLocalStorage();
+loadWalletAddresses();
+renderPortfolioHistory(loadPortfolioHistory());
 refreshFxRates();
 refreshData();
 
